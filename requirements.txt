@@ -1,7 +1,7 @@
 fastapi==0.111.0
 alembic==1.13.1 # DB migrations
 requests==2.31.0 # Readable HTTP
-pyargon2==1.0.7 # Encryption
+#pyargon2==1.0.7 # Encryption
 psycopg2==2.9.9 # PSQL driver
 password-validator==1.0 # Enforceable rules for passwords
 pydantic-settings==2.2.1 # Pydantic settings options [donated to the python-org, not part of the main package anymore]
