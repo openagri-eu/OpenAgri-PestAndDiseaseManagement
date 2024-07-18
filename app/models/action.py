@@ -12,4 +12,4 @@ class Action(Base):
     name = Column(String)
     description = Column(String)
 
-    rules: Mapped[List["Rule"]] = relationship(back_populates="action")
+    # rules: Mapped[List["Rule"]] = relationship(back_populates="action")

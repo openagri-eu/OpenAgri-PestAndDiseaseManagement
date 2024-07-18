@@ -3,5 +3,5 @@
 .alembic
 .env_local
 __pycache__
-alembic.ini
-/alembic
+#alembic.ini
+#/alembic

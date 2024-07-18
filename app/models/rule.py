@@ -11,10 +11,5 @@ class Rule(Base):
     name = Column(String)
     description = Column(String, nullable=True)
 
-    action_id: Mapped[int] = mapped_column(ForeignKey("action.id"))
-    action: Mapped["Action"] = relationship(back_populates="users")
-
-
-
-
-    # skup rulova od kojih se sastoji
+    # action_id: Mapped[int] = mapped_column(ForeignKey("action.id"))
+    # action: Mapped["Action"] = relationship(back_populates="users")

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
 from api import deps
+from models.data import Data
 from schemas import Message
 
 router = APIRouter()
@@ -11,36 +12,18 @@ router = APIRouter()
 
 @router.post("/upload/", response_model=Message)
 async def upload(
-        csv: Optional[Annotated[UploadFile, File()]],
-        excel: Optional[Annotated[UploadFile, File()]],
+        csv: UploadFile = File(...),
         db: Session = Depends(deps.get_db)
 ) -> Message:
     """
-    Upload a file, either csv or excel
+    Upload a .csv file
     """
 
-    if not csv:
-        if not excel:
-            raise HTTPException(
-                status_code=400,
-                detail="No file to upload."
-            )
-
-    if not csv.filename.endswith(".csv"):
-        raise HTTPException(
-            status_code=400,
-            detail="CSV file name must end with \".csv\""
-        )
-    else:
-        contents = await csv.read()
-
-        # Convert it to JSON
+    db.query(Data).first()
+    
 
 
 
 
-    if excel:
-        # Save the excel to the database
-        pass
 
-    return Message(message="Successfully uploaded file{} to the database.".format("s" if csv and excel else ""))
+    return Message(message="Successfully uploaded file to the database.")

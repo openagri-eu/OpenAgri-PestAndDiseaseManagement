@@ -10,3 +10,4 @@ PyJWT==2.8.0 # Instead of jose (has a CVE)
 argon2_cffi==23.1.0 # Backend for Argon encryption
 openpyxl==3.1.2 # For Excel support up to 2010
 python-multipart==0.0.9 # For uploading files (.csv, .xlss ...)
+SQLAlchemy==2.0.31
