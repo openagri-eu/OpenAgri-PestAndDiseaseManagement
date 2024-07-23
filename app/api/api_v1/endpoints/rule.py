@@ -1,16 +1,19 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from requests import Session
 
-from schemas.rule import SymbolTable, Rule, Rules
+from api import deps
+from schemas import Message
+from schemas.rule import Rule, Rules
 
 router = APIRouter()
-current_rules = []
+
 
 @router.post("/", response_model=Rule)
-def define_rule(
+def create_rule(
     rule: Rule
 ):
     """
-    Define a rule such as: temperature > 50 AND air_pressure < 20 AND 20 <= humidity < 50
+    Create a rule such as: temperature > 50 AND air_pressure < 20 AND 20 <= humidity < 50
     For a list of allowed values, call the get_symbols API.
 
     If the another_compared_value value is passed, it means that the condition is defined as:
@@ -49,7 +52,7 @@ def define_rule(
 
 @router.get("/", response_model=Rules)
 def get_all_rules(
-
+        db: Session = Depends(deps.get_db)
 ):
     """
     Returns all stored rules.
@@ -58,21 +61,19 @@ def get_all_rules(
     return Rules(rules=current_rules)
 
 
-@router.get("/symbols/", response_model=SymbolTable)
-def get_symbols(
-
-):
+@router.delete("/", response_model=Message)
+def delete_rule(
+        db: Session = Depends(deps.get_db)
+) -> Message:
     """
-    Returns a list of symbols that may be used when creating rules.
+    Delete a rule
     """
 
-    mf = ["temperature", "humidity", "air_pressure"]
 
-    o = [">", "<", "==", ">=", "<="]
-
-    st = SymbolTable(
-        measurement_field=mf,
-        operation=o
-    )
-
-    return st
+@router.post("/enable/", response_model=Rule)
+def enable_disable_rule(
+        db: Session = Depends(deps.get_db)
+) -> Rule:
+    """
+    Enable or disable a rule
+    """

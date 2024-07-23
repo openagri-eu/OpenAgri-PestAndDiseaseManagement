@@ -3,10 +3,6 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-class SymbolTable(BaseModel):
-    measurement_field: List[str] = [] # temperature, humidity, pressure
-    operation: List[str] = [] # >, <, >=, ==
-
 class Condition(BaseModel):
     measurement_field: str
     operation: str # >, <, >=, <=, !=

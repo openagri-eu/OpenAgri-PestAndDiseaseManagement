@@ -25,7 +25,7 @@ class Settings(BaseSettings):
             return v
 
         url = f'postgresql://{values.data.get("POSTGRES_USER")}:{values.data.get("POSTGRES_PASSWORD")}' \
-              f'@/{values.data.get("POSTGRES_DB")}?host=localhost'
+              f'@/{values.data.get("POSTGRES_DB")}?host=db' # the host must be the name of the docker compose service
 
         return url
 

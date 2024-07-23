@@ -2,20 +2,19 @@ services:
   backend:
     image: backend
     volumes:
-      - backend-data:/etc/data
+      - data:/etc/data
     build: .
     ports:
       - "80:80"
   db:
-    ports:
-      - "5432:5432"
     image: "postgres"
     volumes:
-      - db-data:/etc/data
+      - data:/etc/data
+    ports:
+      - "5432:5432"
     shm_size: 128mb
     environment:
       POSTGRES_PASSWORD: postgres
 
 volumes:
-  db-data:
-  backend-data:
+  data:
