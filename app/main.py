@@ -1,3 +1,5 @@
+import subprocess
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from api.api_v1.api import api_router
@@ -20,5 +22,9 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# auto migrate the db
+subprocess.run(["alembic", "revision", "--autogenerate"], check=True)
+subprocess.run(["alembic", "upgrade", "head"], check=True)
 
 app.include_router(api_router, prefix="/api/v1")

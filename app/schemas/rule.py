@@ -13,7 +13,9 @@ class Condition(BaseModel):
 
 
 class Rule(BaseModel):
+    # name
     description: Optional[str] = None
+    # timeofday
     conditions: List[Condition] = []
 
 

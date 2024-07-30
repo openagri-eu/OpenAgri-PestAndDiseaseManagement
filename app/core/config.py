@@ -11,11 +11,11 @@ class Settings(BaseSettings):
 
     PROJECT_ROOT: str = path.dirname(path.dirname(path.realpath(__file__)))
 
-    POSTGRES_SERVER: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
-    POSTGRES_DB_PORT: int
     POSTGRES_DB: str
+    POSTGRES_HOST: str
+    # POSTGRES_DB_PORT: int
 
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
 
@@ -24,12 +24,19 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v
 
-        url = f'postgresql://{values.data.get("POSTGRES_USER")}:{values.data.get("POSTGRES_PASSWORD")}' \
-              f'@/{values.data.get("POSTGRES_DB")}?host={environ.get("DB_HOST")}' # the host must be the name of the docker compose service
+        url = "postgresql://{}:{}@/{}?host={}".format(
+            environ.get("POSTGRES_USER"),
+            environ.get("POSTGRES_PASSWORD"),
+            environ.get("POSTGRES_DB"),
+            environ.get("POSTGRES_HOST")
+        )
+
+        # url = f'postgresql://{environ.get("POSTGRES_USER"}:{environ.get("POSTGRES_PASSWORD"}' \
+        #       f'@/{environ.get("POSTGRES_DB")}?host={environ.get("POSTGRES_HOST"}'' # the host must be the name of the docker compose service
 
         return url
 
-    model_config = SettingsConfigDict(case_sensitive=True, env_file="defaults.env")
+    # model_config = SettingsConfigDict(case_sensitive=True, env_file="defaults.env")
 
 
 settings = Settings()

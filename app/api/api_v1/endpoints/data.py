@@ -1,11 +1,9 @@
 import datetime
-from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from api import deps
-from models.data import Data
 from schemas import Message, CreateData
 from crud import data
 
@@ -21,7 +19,7 @@ async def upload(
         db: Session = Depends(deps.get_db)
 ) -> Message:
     """
-    Upload a .csv file
+    Upload a .csv file (Using the ploutos .csv provided as how a baseline file should be formatted)
     """
 
     csv_reader = reader(iterdecode(csv_file.file, "utf-8"), delimiter=",")
@@ -41,6 +39,8 @@ async def upload(
             print("skipped row")
             continue
 
+        # TODO: Optimization: instead of doing a insert by insert, create a batch insert job for the db (1000 at a time)
+
         # Parse .csv file
         obj_in = CreateData(
             date=datetime.datetime.strptime(temp[0], "%Y-%m-%d"),
@@ -58,7 +58,7 @@ async def upload(
             temperature_canopy=int(temp[12]),
             solar_irradiance_copernicus=int(temp[13])
         )
-        response_obj = data.create(db=db, obj_in=obj_in)
+        data.create(db=db, obj_in=obj_in)
 
 
     return Message(message="Successfully uploaded file to the database.")

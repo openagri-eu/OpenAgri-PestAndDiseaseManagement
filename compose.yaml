@@ -1,13 +1,4 @@
 services:
-  backend:
-    image: backend
-    volumes:
-      - data:/etc/data
-    build: .
-    ports:
-      - "80:80"
-    environment:
-      DB_HOST: postgres
   db:
     hostname: postgres
     image: "postgres"
@@ -18,6 +9,14 @@ services:
     shm_size: 128mb
     environment:
       POSTGRES_PASSWORD: postgres
+  backend:
+    image: backend
+    volumes:
+      - data:/etc/data
+    build: .
+    ports:
+      - "80:80"
+    env_file: ./defaults.env
 
 volumes:
   data:
