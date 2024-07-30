@@ -6,7 +6,10 @@ services:
     build: .
     ports:
       - "80:80"
+    environment:
+      DB_HOST: postgres
   db:
+    hostname: postgres
     image: "postgres"
     volumes:
       - data:/etc/data

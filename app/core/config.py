@@ -1,7 +1,7 @@
 from typing import Optional, Any, List
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import SettingsConfigDict, BaseSettings
-from os import path
+from os import path, environ
 
 
 class Settings(BaseSettings):
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
             return v
 
         url = f'postgresql://{values.data.get("POSTGRES_USER")}:{values.data.get("POSTGRES_PASSWORD")}' \
-              f'@/{values.data.get("POSTGRES_DB")}?host=db' # the host must be the name of the docker compose service
+              f'@/{values.data.get("POSTGRES_DB")}?host={environ.get("DB_HOST")}' # the host must be the name of the docker compose service
 
         return url
 
