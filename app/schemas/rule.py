@@ -1,22 +1,31 @@
+import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
 
 
 class Condition(BaseModel):
-    measurement_field: str
-    operation: str # >, <, >=, <=, !=
-    compared_value: int
-    another_compared_value: Optional[int] = None
-    include_min_value: Optional[bool] = False
-    include_max_value: Optional[bool] = False
+    unit_id: int
+    operation_id: int
+    value: int
+
+
+class CreateCondition(Condition):
+    pass
 
 
 class Rule(BaseModel):
-    # name
+    name: str
     description: Optional[str] = None
-    # timeofday
+
+    from_time: datetime.time
+    to_time: datetime.time
+
     conditions: List[Condition] = []
+
+
+class CreateRule(Rule):
+    pass
 
 
 class Rules(BaseModel):

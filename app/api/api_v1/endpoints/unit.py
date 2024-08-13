@@ -50,16 +50,3 @@ def delete_unit(
         return Message(message="Successfully removed unit!")
 
     return Message(message="Unit doesn't exist.")
-
-
-@router.get("/operators/", response_model=Operators)
-def get_operators(
-        db: Session = Depends(deps.get_db)
-) -> Operators:
-    """
-    Returns all operators available for use (<, >=, ==, etc...)
-    """
-
-    operators_db = operator.get_all(db=db)
-
-    return Operators(operators=operators_db)

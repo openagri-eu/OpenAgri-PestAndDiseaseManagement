@@ -1,4 +1,6 @@
 import subprocess
+import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -7,11 +9,19 @@ from core.config import settings
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
 
-app = FastAPI(
-    title="OpenAgri", openapi_url="/api/v1/openapi.json"
-)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Sleep necessary because the db might not be up before this call, which results in a crash (restart the backend container for it to work properly though)
+    time.sleep(3)
+    # auto migrate the db
+    subprocess.run(["alembic", "revision", "--autogenerate"], check=True)
+    subprocess.run(["alembic", "upgrade", "head"], check=True)
 
-#app.add_middleware(HTTPSRedirectMiddleware)
+    yield
+
+app = FastAPI(
+    title="OpenAgri", openapi_url="/api/v1/openapi.json", lifespan=lifespan
+)
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
@@ -22,9 +32,5 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-# auto migrate the db
-subprocess.run(["alembic", "revision", "--autogenerate"], check=True)
-subprocess.run(["alembic", "upgrade", "head"], check=True)
 
 app.include_router(api_router, prefix="/api/v1")

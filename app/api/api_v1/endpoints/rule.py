@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from requests import Session
 
+import crud
 from api import deps
 from schemas import Message
 from schemas.rule import Rule, Rules
@@ -10,23 +11,12 @@ router = APIRouter()
 
 @router.post("/", response_model=Rule)
 def create_rule(
-    rule: Rule
+        rule: Rule,
+        db: Session = Depends(deps.get_db)
 ):
     """
-    Create a rule such as: temperature > 50 AND air_pressure < 20 AND 20 <= humidity < 50
-    For a list of allowed values, call the get_symbols API.
-
-    If the another_compared_value value is passed, it means that the condition is defined as:
-    compared_value < x < another_compared_value. (The sequence of values is not important)
-    The two boolean fields convey whether the min or max values should be included in
-    the rule i.e. < or <= for both values.
-
-    For a description of the condition class, look below the API definitions on this page, where the class definitions
-    are located.
+    Create a rule such as: temperature > 50 AND air_pressure < 20 AND humidity < 50
     """
-
-    mf_allowed = {"temperature", "humidity", "air_pressure"}
-    o_allowed = {">", "<", "==", ">=", "<="}
 
     if len(rule.conditions) == 0:
         raise HTTPException(
@@ -34,20 +24,27 @@ def create_rule(
             detail="Can't create rule with no conditions."
         )
 
+    # Check whether there are two conditions with the same unit
+    cond_times = {}
     for cond in rule.conditions:
-        if cond.measurement_field not in mf_allowed:
+        if cond_times[cond.unit_id] is None:
+            cond_times[cond.unit_id] = [cond.unit_id]
+        cond_times[cond.unit_id].append(cond.unit_id)
+
+    for cond in cond_times.values():
+        if len(cond) > 1:
             raise HTTPException(
                 status_code=400,
-                detail="{} is not allowed. (allow list:{})".format(cond.measurement_field, mf_allowed)
-            )
-        if cond.operation not in o_allowed:
-            raise HTTPException(
-                status_code=400,
-                detail="{} is not allowed. (allow list:{})".format(cond.operation, o_allowed)
+                detail="Can't have same unit multiple times in one rule."
             )
 
-    current_rules.append(rule)
+    crud.rule.create(db=db, obj_in=rule)
+
+    for cond in rule.conditions:
+        crud.condition.create(db=db, obj_in=cond)
+
     return rule
+
 
 
 @router.get("/", response_model=Rules)
@@ -70,10 +67,12 @@ def delete_rule(
     """
 
 
-@router.post("/enable/", response_model=Rule)
-def enable_disable_rule(
-        db: Session = Depends(deps.get_db)
-) -> Rule:
-    """
-    Enable or disable a rule
-    """
+
+# This API regards the live data rules, not the dataset rules (for risk index definition)
+# @router.post("/enable/", response_model=Rule)
+# def enable_disable_rule(
+#         db: Session = Depends(deps.get_db)
+# ) -> Rule:
+#     """
+#     Enable or disable a rule
+#     """

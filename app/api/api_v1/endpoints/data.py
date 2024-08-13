@@ -26,7 +26,12 @@ async def upload(
     first_column = True
     for row in csv_reader:
         if first_column:
+            # Check against existing units, if new ones add the to db.
+            for col in row:
+                print(col)
+
             first_column = False
+            return Message(message="los pollos hermanos")
             continue
 
         aggregate_str = ""
@@ -59,6 +64,5 @@ async def upload(
             solar_irradiance_copernicus=int(temp[13])
         )
         data.create(db=db, obj_in=obj_in)
-
 
     return Message(message="Successfully uploaded file to the database.")

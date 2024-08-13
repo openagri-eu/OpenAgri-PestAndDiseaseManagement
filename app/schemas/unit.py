@@ -4,6 +4,9 @@ from pydantic import BaseModel, ConfigDict
 
 
 class UnitCreate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
     symbol: str
 
 

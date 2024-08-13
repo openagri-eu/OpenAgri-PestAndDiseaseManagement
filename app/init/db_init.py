@@ -33,6 +33,10 @@ def init_admin_user():
     db.add(basic_admin)
     db.commit()
 
+# def init_operator (>, <, ...)
+# def init_units (Iz ploutos fajla)
+
+
 
 def init_db():
     init_roles()
