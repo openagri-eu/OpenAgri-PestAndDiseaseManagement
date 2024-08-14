@@ -21,7 +21,7 @@ class CrudRule(CRUDBase[Rule, CreateRule, dict]):
         rule_obj.name = obj_in_data["name"]
         rule_obj.description = obj_in_data["description"]
         rule_obj.from_time = obj_in_data["from_time"]
-        rule_obj.to_time = obj_in_data["to_tile"]
+        rule_obj.to_time = obj_in_data["to_time"]
 
         db.add(rule_obj)
 

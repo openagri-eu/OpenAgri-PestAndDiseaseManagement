@@ -3,8 +3,9 @@ import datetime
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
+import crud
 from api import deps
-from schemas import Message, CreateData
+from schemas import Message, CreateData, UnitCreate
 from crud import data
 
 from csv import reader
@@ -26,12 +27,28 @@ async def upload(
     first_column = True
     for row in csv_reader:
         if first_column:
-            # Check against existing units, if new ones add the to db.
+            # Check against existing units, if new ones add them to db.
+            units = []
             for col in row:
-                print(col)
+                units = col.split(";")
+            for unit in units:
+                res = unit.strip().split(" ")
+                if len(res) == 1:
+                    continue
+                elif len(res) > 1:
+                    unit_name = "".join(e + " " for e in (res[:len(res)-1])).strip()
+                    # Check whether the unit already exists in the database
+                    unit_db = crud.unit.get_by_name(db=db, name=unit_name)
+                    if unit_db:
+                        continue
+                    if not res[-1].__contains__("("):
+                        continue
+                    unit_symbol = res[-1].strip("()")
+
+                    crud.unit.create(db=db, obj_in=UnitCreate(name=unit_name, symbol=unit_symbol))
 
             first_column = False
-            return Message(message="testing message")
+            return Message(message="a")
             continue
 
         aggregate_str = ""
@@ -44,7 +61,7 @@ async def upload(
             print("skipped row")
             continue
 
-        # TODO: Optimization: instead of doing a insert by insert, create a batch insert job for the db (1000 at a time)
+        # NICE_TO_HAVE: Optimization: instead of doing a insert by insert, create a batch insert job for the db (1000 at a time)
 
         # Parse .csv file
         obj_in = CreateData(

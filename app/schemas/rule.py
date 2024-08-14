@@ -1,12 +1,12 @@
 import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Condition(BaseModel):
     unit_id: int
-    operation_id: int
+    operator_id: int
     value: int
 
 
@@ -15,6 +15,8 @@ class CreateCondition(Condition):
 
 
 class Rule(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     name: str
     description: Optional[str] = None
 
@@ -29,4 +31,6 @@ class CreateRule(Rule):
 
 
 class Rules(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     rules: List[Rule] = []

@@ -1,4 +1,6 @@
 from typing import Optional, Any, List
+
+from password_validator import PasswordValidator
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import SettingsConfigDict, BaseSettings
 from os import path, environ
@@ -35,6 +37,18 @@ class Settings(BaseSettings):
         #       f'@/{environ.get("POSTGRES_DB")}?host={environ.get("POSTGRES_HOST"}'' # the host must be the name of the docker compose service
 
         return url
+
+    PASSWORD_SCHEMA_OBJ: PasswordValidator = PasswordValidator()
+    PASSWORD_SCHEMA_OBJ \
+        .min(8) \
+        .max(100) \
+        .has().uppercase() \
+        .has().lowercase() \
+        .has().digits() \
+        .has().no().spaces() \
+
+    ACCESS_TOKEN_EXPIRATION_TIME: int
+    KEY: str = "c2bab29d257f0ffc52d9ac677d4ff6d1d9d5e92e3d3939d3f4cwc"
 
     # model_config = SettingsConfigDict(case_sensitive=True, env_file="defaults.env")
 

@@ -15,7 +15,7 @@ class CrudUser(CRUDBase[User, UserCreate, UserUpdate]):
 
     def authenticate(self, db: Session, email: str, password: str) -> Optional[User]:
         user_db = self.get_by_email(db, email=email)
-        if not user:
+        if not user_db:
             return None
         if not verify_password(password, user_db.password):
             return None

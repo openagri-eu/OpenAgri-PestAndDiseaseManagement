@@ -3,8 +3,7 @@ from requests import Session
 
 import crud
 from api import deps
-from schemas import Message
-from schemas.rule import Rule, Rules
+from schemas import Message, Rule, Rules
 
 router = APIRouter()
 
@@ -27,8 +26,9 @@ def create_rule(
     # Check whether there are two conditions with the same unit
     cond_times = {}
     for cond in rule.conditions:
-        if cond_times[cond.unit_id] is None:
+        if not cond.unit_id in cond_times:
             cond_times[cond.unit_id] = [cond.unit_id]
+            continue
         cond_times[cond.unit_id].append(cond.unit_id)
 
     for cond in cond_times.values():
@@ -55,24 +55,28 @@ def get_all_rules(
     Returns all stored rules.
     """
 
-    return Rules(rules=current_rules)
+    rules_db = crud.rule.get_all(db=db)
+
+    return Rules(rules=rules_db)
 
 
-@router.delete("/", response_model=Message)
+@router.delete("/{rule_id}", response_model=Message)
 def delete_rule(
+        rule_id: int,
         db: Session = Depends(deps.get_db)
 ) -> Message:
     """
     Delete a rule
     """
 
+    rule_db = crud.rule.get(db=db, id=rule_id)
 
+    if not rule_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Can't delete rule that doesn't exist."
+        )
 
-# This API regards the live data rules, not the dataset rules (for risk index definition)
-# @router.post("/enable/", response_model=Rule)
-# def enable_disable_rule(
-#         db: Session = Depends(deps.get_db)
-# ) -> Rule:
-#     """
-#     Enable or disable a rule
-#     """
+    crud.rule.remove(db=db, id=rule_id)
+
+    return Message(message="Successfully deleted the rule!")

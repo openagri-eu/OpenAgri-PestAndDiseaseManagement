@@ -8,6 +8,7 @@ from api.api_v1.api import api_router
 from core.config import settings
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
+from init.db_init import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +17,9 @@ async def lifespan(app: FastAPI):
     # auto migrate the db
     subprocess.run(["alembic", "revision", "--autogenerate"], check=True)
     subprocess.run(["alembic", "upgrade", "head"], check=True)
+
+    time.sleep(1)
+    init_db()
 
     yield
 

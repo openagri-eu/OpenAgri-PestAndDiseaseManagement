@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+import crud
 from api import deps
 from schemas import Operators, Units, UnitCreate, Message, UnitDelete
 from crud import unit, operator
@@ -17,7 +18,15 @@ def create_unit(
     Creates a user defined unit
     """
 
-    unit_db = unit.create(db=db, obj_in=unit_in)
+    unit_db = crud.unit.get_by_name(db=db, name=unit_in.name)
+
+    if unit_db:
+        raise HTTPException(
+            status_code=400,
+            detail="That unit already exists."
+        )
+
+    unit.create(db=db, obj_in=unit_in)
 
     return Message(message="Successfully created!")
 
@@ -44,9 +53,14 @@ def delete_unit(
     Delete a unit
     """
 
+    unit_db = crud.unit.get(db=db, id=unit_id.id)
+
+    if not unit_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Can't delete a unit that doesn't exist."
+        )
+
     removed_unit = unit.remove(db=db, id=unit_id.id)
 
-    if removed_unit:
-        return Message(message="Successfully removed unit!")
-
-    return Message(message="Unit doesn't exist.")
+    return Message(message="Successfully removed unit!")
