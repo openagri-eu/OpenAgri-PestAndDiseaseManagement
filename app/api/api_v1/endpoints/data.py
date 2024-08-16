@@ -48,6 +48,7 @@ async def upload(
                     crud.unit.create(db=db, obj_in=UnitCreate(name=unit_name, symbol=unit_symbol))
 
             first_column = False
+            return Message(message="lol")
             continue
 
         aggregate_str = ""
@@ -81,4 +82,4 @@ async def upload(
         )
         data.create(db=db, obj_in=obj_in)
 
-    return Message(message="Successfully uploaded file to the database.")
+    return Message(message="Successfully uploaded file.")

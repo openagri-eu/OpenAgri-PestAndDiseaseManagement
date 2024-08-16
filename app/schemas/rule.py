@@ -5,13 +5,57 @@ from pydantic import BaseModel, ConfigDict
 
 
 class Condition(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     unit_id: int
     operator_id: int
     value: int
 
 
-class CreateCondition(Condition):
-    pass
+class CreateCondition(BaseModel):
+    rule_id: int
+    unit_id: int
+    operator_id: int
+    value: int
+
+
+class CreateRule(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+    from_time: datetime.time
+    to_time: datetime.time
+
+    conditions: List[Condition] = []
+
+
+class UpdateRule(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+    from_time: Optional[datetime.time] = None
+    to_time: Optional[datetime.time] = None
+
+    conditions : Optional[List[Condition]] = []
+
+
+class RuleDB(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+
+    name: str
+    description: Optional[str] = None
+
+    from_time: datetime.time
+    to_time: datetime.time
+
+    conditions: List[Condition] = []
+
+class RulesDB(BaseModel):
+    rules: List[RuleDB] = []
+
+
 
 
 class Rule(BaseModel):
@@ -26,11 +70,6 @@ class Rule(BaseModel):
     conditions: List[Condition] = []
 
 
-class CreateRule(Rule):
-    pass
 
 
-class Rules(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
-    rules: List[Rule] = []

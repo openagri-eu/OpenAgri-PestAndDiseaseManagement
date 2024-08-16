@@ -4,17 +4,17 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from crud.base import CRUDBase, CreateSchemaType, ModelType
-from models import Rule
-from schemas import CreateRule
+from crud.base import CRUDBase
+from models import Rule, Condition
+from schemas import CreateRule, UpdateRule
 
 
-class CrudRule(CRUDBase[Rule, CreateRule, dict]):
+class CrudRule(CRUDBase[Rule, CreateRule, UpdateRule]):
 
     def get_all(self, db: Session):
         return db.query(Rule).all()
 
-    def create(self, db: Session, obj_in: CreateSchemaType, **kwargs) -> ModelType:
+    def create(self, db: Session, obj_in: CreateRule, **kwargs) -> Rule:
         obj_in_data = jsonable_encoder(obj_in)
 
         rule_obj = Rule()
@@ -31,6 +31,8 @@ class CrudRule(CRUDBase[Rule, CreateRule, dict]):
             traceback.print_exc()
             return None
         db.refresh(rule_obj)
+
+        return rule_obj
 
 
 rule = CrudRule(Rule)

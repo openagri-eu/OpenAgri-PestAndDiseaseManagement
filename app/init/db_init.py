@@ -22,12 +22,12 @@ def init_admin_user():
 
 # def init_operator (>, <, ...)
 def init_operators():
-    a = Operator(operator=">")
-    c = Operator(operator="<")
-    d = Operator(operator=">=")
-    e = Operator(operator="<=")
-    f = Operator(operator="==")
-    g = Operator(operator="!=")
+    a = Operator(symbol=">")
+    c = Operator(symbol="<")
+    d = Operator(symbol=">=")
+    e = Operator(symbol="<=")
+    f = Operator(symbol="==")
+    g = Operator(symbol="!=")
 
     l = [a,c,d,e,f,g]
     for operator in l:
