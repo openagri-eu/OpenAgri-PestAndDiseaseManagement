@@ -48,7 +48,7 @@ async def upload(
                     crud.unit.create(db=db, obj_in=UnitCreate(name=unit_name, symbol=unit_symbol))
 
             first_column = False
-            return Message(message="lol")
+            # return Message(message="lol")
             continue
 
         aggregate_str = ""
