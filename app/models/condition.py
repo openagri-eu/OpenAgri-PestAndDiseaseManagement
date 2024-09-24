@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIME
+from sqlalchemy import Column, Integer, String, ForeignKey, TIME, Float
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from db.base_class import Base
@@ -18,4 +18,4 @@ class Condition(Base):
     operator_id: Mapped[int] = mapped_column(ForeignKey("operator.id"))
     operator: Mapped["Operator"] = relationship(back_populates="condition")
 
-    value = Column(Integer)
+    value = Column(Float)

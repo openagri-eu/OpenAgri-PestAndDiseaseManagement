@@ -35,6 +35,21 @@ def create_rule(
     for cond in rule.conditions:
         # Count for same conditions present in file
         if not cond.unit_id in cond_times:
+
+            # Check for unit and operator ids
+            operator_db = crud.operator.get(db=db, id=cond.operator_id)
+            if not operator_db:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Operator with ID: {} does not exist.".format(cond.operator_id)
+                )
+            unit_db = crud.unit.get(db=db, id=cond.unit_id)
+            if not unit_db:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Unit with ID: {} does not exist.".format(cond.unit_id)
+                )
+
             cond_times[cond.unit_id] = [cond.unit_id]
             continue
         cond_times[cond.unit_id].append(cond.unit_id)
@@ -50,11 +65,11 @@ def create_rule(
         if not unit_db:
             raise HTTPException(
                 status_code=400,
-                detail="Operator with ID: {} does not exist.".format(cond.unit_id)
+                detail="Unit with ID: {} does not exist.".format(cond.unit_id)
             )
 
     for cond in cond_times.values():
-        if len(cond) > 2:
+        if len(cond) >= 2:
             raise HTTPException(
                 status_code=400,
                 detail="Can't have more that one condition per unit."

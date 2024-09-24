@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Date, Time, String
+from sqlalchemy import Column, Integer, Date, Time, String, Float
 
 from db.base_class import Base
 
@@ -10,13 +10,13 @@ class Data(Base):
     time = Column(Time, nullable=True)
     nuts3 = Column(String, nullable=True)
     nuts2 = Column(String, nullable=True)
-    temperature_air = Column(Integer, nullable=True, info={"unit_of_measure": "celsius"})
-    relative_humidity = Column(Integer, nullable=True, info={"unit_of_measure": "percentage"})
-    precipitation = Column(Integer, nullable=True, info={"unit_of_measure": "mm"})
-    wind_speed = Column(Integer, nullable=True, info={"unit_of_measure": "km/h"})
-    wind_direction = Column(Integer, nullable=True)
-    wind_gust = Column(Integer, nullable=True, info={"unit_of_measure": "km/h"})
-    atmospheric_pressure = Column(Integer, nullable=True, info={"unit_of_measure": "mbar"})
-    relative_humidity_canopy = Column(Integer, nullable=True, info={"unit_of_measure": "percentage"})
-    temperature_canopy = Column(Integer, nullable=True, info={"unit_of_measure": "celsius"})
-    solar_irradiance_copernicus = Column(Integer, nullable=True, info={"unit_of_measure": "W/m2"})
+    temperature_air = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
+    relative_humidity = Column(Float, nullable=True, info={"unit_of_measure": "percentage"})
+    precipitation = Column(Float, nullable=True, info={"unit_of_measure": "mm"})
+    wind_speed = Column(Float, nullable=True, info={"unit_of_measure": "km/h"})
+    wind_direction = Column(Float, nullable=True)
+    wind_gust = Column(Float, nullable=True, info={"unit_of_measure": "km/h"})
+    atmospheric_pressure = Column(Float, nullable=True, info={"unit_of_measure": "mbar"})
+    relative_humidity_canopy = Column(Float, nullable=True, info={"unit_of_measure": "percentage"})
+    temperature_canopy = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
+    solar_irradiance_copernicus = Column(Float, nullable=True, info={"unit_of_measure": "W/m2"})

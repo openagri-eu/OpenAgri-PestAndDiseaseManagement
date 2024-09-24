@@ -13,11 +13,11 @@ from init.db_init import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Sleep necessary because the db might not be up before this call, which results in a crash (restart the backend container for it to work properly though)
-    time.sleep(3)
+
     # auto migrate the db
+    time.sleep(3)
     subprocess.run(["alembic", "revision", "--autogenerate"], check=True)
     subprocess.run(["alembic", "upgrade", "head"], check=True)
-
     time.sleep(1)
     init_db()
 
