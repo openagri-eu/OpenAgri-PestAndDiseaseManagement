@@ -16,5 +16,4 @@ class Rule(Base):
     from_time = Column(TIME, nullable=False)
     to_time = Column(TIME, nullable=False)
 
-    conditions: Mapped[List["Condition"]] = relationship(back_populates="rule")
-
+    conditions: Mapped[List["Condition"]] = relationship(back_populates="rule", cascade="all,delete")

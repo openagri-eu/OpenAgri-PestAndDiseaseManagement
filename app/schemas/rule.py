@@ -9,14 +9,14 @@ class Condition(BaseModel):
 
     unit_id: int
     operator_id: int
-    value: int
+    value: float
 
 
 class CreateCondition(BaseModel):
     rule_id: int
     unit_id: int
     operator_id: int
-    value: int
+    value: float
 
 
 class CreateRule(BaseModel):

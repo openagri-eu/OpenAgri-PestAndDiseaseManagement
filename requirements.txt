@@ -15,3 +15,4 @@ pydantic==2.8.2
 starlette==0.37.2
 # Rule engine that can take arbitrary python objects with fields and apply filters or rules onto them
 rule-engine==4.5.0
+pandas==2.2.2
