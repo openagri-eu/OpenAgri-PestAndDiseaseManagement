@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 import crud
 from api import deps
-from schemas import Operators, Units, UnitCreate, Message, UnitDelete
-from crud import unit, operator
+from schemas import Units, UnitCreate, Message, UnitDelete
+from crud import unit
 
 router = APIRouter()
 
