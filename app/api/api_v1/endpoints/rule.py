@@ -30,7 +30,6 @@ def create_rule(
         )
 
     # Check whether there are two conditions with the same unit
-    # TODO: include rules that contain a > 5 and a < 10 as conditions
     cond_times = {}
     for cond in rule.conditions:
         # Count for same conditions present in file
@@ -74,26 +73,6 @@ def create_rule(
                 status_code=400,
                 detail="Can't have more that one condition per unit."
             )
-
-        # Find way to parse rules from schema to only disallow truly impossible rules (i.e. a == 5, a == 10 | a != 5, a != 10, a == 5 | ...
-
-        # if len(cond) >= 3:
-        #     raise HTTPException(
-        #         status_code=400,
-        #         detail="Can't have more that two conditions per unit."
-        #     )
-
-        # if len(cond) == 1:
-        #     continue
-        #
-        # conditions_in_question = [cond_q for cond_q in rule.conditions if cond_q.unit_id == cond[0]]
-        # operators_db = crud.operator.get_all(db=db)
-        # not_allowed = [crud.operator.get_by_symbol(db=db, symbol="=="), crud.operator.get_by_symbol(db=db, symbol="!=")]
-        # if any([x in not_allowed for x in conditions_in_question]):
-        #     raise HTTPException(
-        #         status_code=400,
-        #         detail="Can't have multiple conditions that use != or == as "
-        #     )
 
     rule_db = crud.rule.create(db=db, obj_in=rule)
 
