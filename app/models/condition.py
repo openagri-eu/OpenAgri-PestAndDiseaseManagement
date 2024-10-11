@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIME, Float
+from sqlalchemy import Column, Integer, ForeignKey, Float
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from db.base_class import Base
-from .action import Action
 
 
 class Condition(Base):

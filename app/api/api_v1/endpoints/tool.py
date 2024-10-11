@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from api import deps
-from schemas import Message, RiskIndexResponse
+from schemas import RiskIndexResponse
 
 from crud import rule, data
 

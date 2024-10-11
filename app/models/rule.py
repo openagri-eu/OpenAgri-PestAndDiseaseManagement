@@ -1,10 +1,9 @@
 from typing import List
 
-from sqlalchemy import Column, Integer, String, ForeignKey, TIME
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy import Column, Integer, String, TIME
+from sqlalchemy.orm import Mapped, relationship
 
 from db.base_class import Base
-from .action import Action
 
 
 class Rule(Base):
