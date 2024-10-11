@@ -30,7 +30,7 @@ def get_current_user(
 ) -> User:
     try:
         payload = jwt.decode(
-            token, settings.KEY, algorithms=[security.ALGORITHM]
+            token, settings.JWT_KEY, algorithms=[security.ALGORITHM]
         )
         # token_data = TokenPayload(**payload)
     except (jwt.PyJWTError, ValidationError):
