@@ -43,16 +43,11 @@ async def upload(
                 # Check whether unit is already in db
                 symbol_name = parts[-1].strip("()")
 
-                print(unit_name)
-                print(symbol_name)
-
                 crud.unit.create(db=db, obj_in=UnitCreate(name=unit_name, symbol=symbol_name))
 
             first_column = False
-            # return Message(message="lol")
             continue
 
-        # return Message(message="kek")
 
         obj_in = CreateData(
             date=datetime.datetime.strptime(row[0], "%Y-%m-%d"),
@@ -73,36 +68,3 @@ async def upload(
         data.create(db=db, obj_in=obj_in)
 
     return Message(message="Successfully uploaded file.")
-
-    #     aggregate_str = ""
-    #     for col in row:
-    #         aggregate_str += col + ";"
-    #
-    #     temp = [ags for ags in aggregate_str.split(";") if ags != ""]
-    #
-    #     if len(temp) < 14:
-    #         print("skipped row")
-    #         continue
-    #
-    #     # NICE_TO_HAVE: Optimization: instead of doing a insert by insert, create a batch insert job for the db (1000 at a time)
-    #
-    #     # Parse .csv file
-    #     obj_in = CreateData(
-    #         date=datetime.datetime.strptime(temp[0], "%Y-%m-%d"),
-    #         time=datetime.datetime.strptime(temp[1], "%H:%M:%S").time(),
-    #         nuts3=temp[2],
-    #         nuts2=temp[3],
-    #         temperature_air=int(temp[4]),
-    #         relative_humidity=int(temp[5]),
-    #         precipitation=int(temp[6]),
-    #         wind_speed=int(temp[7]),
-    #         wind_direction=int(temp[8]),
-    #         wind_gust=int(temp[9]),
-    #         atmospheric_pressure=int(temp[10]),
-    #         relative_humidity_canopy=int(temp[11]),
-    #         temperature_canopy=int(temp[12]),
-    #         solar_irradiance_copernicus=int(temp[13])
-    #     )
-    #     data.create(db=db, obj_in=obj_in)
-    #
-    # return Message(message="Successfully uploaded file.")
