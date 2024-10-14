@@ -7,9 +7,7 @@ from os import path, environ
 
 
 class Settings(BaseSettings):
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
-        # "http://localhost:4200"
-    ]
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 
     PROJECT_ROOT: str = path.dirname(path.dirname(path.realpath(__file__)))
 
