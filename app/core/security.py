@@ -30,21 +30,3 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
-
-
-def generate_jwt_token(email: str) -> str:
-    delta = timedelta(hours=24*7)
-    expires = datetime.utcnow() + delta
-    exp = expires.timestamp()
-    encoded_jwt = jwt.encode(
-        payload={"exp": exp, "nbf": datetime.utcnow(), "sub": email}, key=settings.JWT_KEY, algorithm=ALGORITHM,
-    )
-    return encoded_jwt
-
-
-def verify_jwt_token(token: str) -> Optional[str]:
-    try:
-        decoded_token = jwt.decode(token, settings.JWT_KEY, algorithms=["HS256"])
-        return decoded_token["sub"]
-    except jwt.PyJWTError:
-        return None
