@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 
 import crud
 from api import deps
-from schemas import Message, RulesDB, RuleDB, CreateRule, CreateCondition
+from schemas import Message, RulesDB, RuleDB, CreateRuleWithConditions, CreateCondition, CreateRule
 
 router = APIRouter()
 
 
 @router.post("/", response_model=RuleDB)
 def create_rule(
-        rule: CreateRule,
+        rule: CreateRuleWithConditions,
         db: Session = Depends(deps.get_db)
 ):
     """
@@ -74,7 +74,8 @@ def create_rule(
                 detail="Can't have more that one condition per unit."
             )
 
-    rule_db = crud.rule.create(db=db, obj_in=rule)
+    cr = CreateRule(name=rule.name, description=rule.description, from_time=rule.from_time, to_time=rule.to_time)
+    rule_db = crud.rule.create(db=db, obj_in=cr)
 
     for cond in rule.conditions:
         crud.condition.create(db=db, obj_in=CreateCondition(**cond.model_dump(), rule_id=rule_db.id))

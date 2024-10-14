@@ -26,6 +26,8 @@ class CreateRule(BaseModel):
     from_time: datetime.time
     to_time: datetime.time
 
+
+class CreateRuleWithConditions(CreateRule):
     conditions: List[Condition] = []
 
 
@@ -52,10 +54,9 @@ class RuleDB(BaseModel):
 
     conditions: List[Condition] = []
 
+
 class RulesDB(BaseModel):
     rules: List[RuleDB] = []
-
-
 
 
 class Rule(BaseModel):
@@ -68,8 +69,3 @@ class Rule(BaseModel):
     to_time: datetime.time
 
     conditions: List[Condition] = []
-
-
-
-
-
