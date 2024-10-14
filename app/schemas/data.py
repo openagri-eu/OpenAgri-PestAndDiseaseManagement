@@ -25,18 +25,18 @@ class CreateData(BaseModel):
 class UpdateData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    nuts3: Optional[str] = None
-    nuts2: Optional[str] = None
-    temperature_air: Optional[float] = None
-    relative_humidity: Optional[float] = None
-    precipitation: Optional[float] = None
-    wind_speed: Optional[float] = None
-    wind_direction: Optional[float] = None
-    wind_gust: Optional[float] = None
-    atmospheric_pressure: Optional[float] = None
-    relative_humidity_canopy: Optional[float] = None
-    temperature_canopy: Optional[float] = None
-    solar_irradiance_copernicus: Optional[float] = None
+    nuts3: Optional[str]
+    nuts2: Optional[str]
+    temperature_air: Optional[float]
+    relative_humidity: Optional[float]
+    precipitation: Optional[float]
+    wind_speed: Optional[float]
+    wind_direction: Optional[float]
+    wind_gust: Optional[float]
+    atmospheric_pressure: Optional[float]
+    relative_humidity_canopy: Optional[float]
+    temperature_canopy: Optional[float]
+    solar_irradiance_copernicus: Optional[float]
 
 
 class DataDB(BaseModel):
