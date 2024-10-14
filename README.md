@@ -41,16 +41,86 @@ The application will be served on http://127.0.0.1:80 (I.E. typing localhost/doc
 # Documentation
 
 Examples:
+
 <h3> POST </h3>
+
+```
 /api/v1/data/upload/
-<h3> POST/GET </h3>
+```
+
+Example Response:
+```
+{
+    "msg": "Successfully uploaded file."
+}
+```
+
+<h3> POST </h3>
+
+```
 /api/v1/rule/
-<h3> DELETE </h3>
-/api/v1/rule/{rule_id}
-<h3> GET/POST/DELETE </h3>
-/api/v1/unit/
+```
+
+Example Response:
+```
+{
+    "id": 1,
+    "name": "my_rule",
+    "description": "explanation",
+    "from_time": "12:30:00.000Z",
+    "to_time": "08:45:00.000Z",
+    "conditions": [
+        {
+            "unit_id": 1,
+            "operator_id": 1,
+            "value": 51
+        },
+        {
+            "unit_id": 2,
+            "operator_id": 2,
+            "value": 12
+        }
+    ]
+}
+```
+
 <h3> GET </h3>
+
+```
 /api/v1/tool/calculate-risk-index/{rule_id}
+```
+
+Example Response:
+```
+{
+    "rule": {
+        "id": 1,
+        "name": "my_rule",
+        "description": "explanation",
+        "from_time": "12:30:00.000Z",
+        "to_time": "08:45:00.000Z",
+        "conditions": [
+            {
+                "unit_id": 1,
+                "operator_id": 1,
+                "value": 51
+            },
+            {
+                "unit_id": 2,
+                "operator_id": 2,
+                "value": 12
+            }
+        ]
+    },
+    "risk_index_per_day": [
+        {
+            "date": 2022-01-01,
+            "risk_index": 20
+        },
+        
+    ]
+}
+```
 
 <h3> Example usage </h3>
 
