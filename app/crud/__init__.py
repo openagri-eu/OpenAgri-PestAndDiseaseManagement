@@ -5,3 +5,4 @@ from .crud_data import data
 from .crud_condition import condition
 from .crud_rule import rule
 from .crud_dataset import dataset
+from .crud_pest_model import pest_model

@@ -1,7 +1,7 @@
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, UUID4
 
 
 class Condition(BaseModel):
@@ -22,9 +22,8 @@ class CreateCondition(BaseModel):
 class CreateRule(BaseModel):
     name: str
     description: Optional[str] = None
-
-    from_time: datetime.time
-    to_time: datetime.time
+    probability_value: Literal["low", "moderate", "high"]
+    pest_model_id: UUID4
 
 
 class CreateRuleWithConditions(CreateRule):
@@ -45,27 +44,13 @@ class RuleDB(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-
     name: str
-    description: Optional[str] = None
+    description: Optional[str]
 
-    from_time: datetime.time
-    to_time: datetime.time
-
-    conditions: List[Condition] = []
+    conditions: List[Condition]
 
 
 class RulesDB(BaseModel):
     rules: List[RuleDB] = []
 
 
-class Rule(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    name: str
-    description: Optional[str] = None
-
-    from_time: datetime.time
-    to_time: datetime.time
-
-    conditions: List[Condition] = []

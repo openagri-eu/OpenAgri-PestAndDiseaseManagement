@@ -1,22 +1,19 @@
-import datetime
-from typing import List
-
-from pydantic import BaseModel, ConfigDict
-
-from schemas import RuleDB
+from fastapi import Path, HTTPException
+from pydantic import BaseModel, Field, ValidationError, UUID4
 
 
-class RiskIndexSchema(BaseModel):
-    rule_id: int
-    from_date: datetime.date
-    to_date: datetime.date
+class RiskIndexWeather(BaseModel):
+    context: str = Field(alias="@context", default=None)
+    a: str
 
-class RiskIndexDay(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
-    date: datetime.date
-    risk_index: int
+class DatasetIds(BaseModel):
+    ids: list[UUID4]
 
-class RiskIndexResponse(BaseModel):
-    rule: RuleDB
-    risk_index_per_day: List[RiskIndexDay]
+def list_path_param(model_ids: str = Path()):
+    try:
+        ids = DatasetIds(ids=[x for x in model_ids.split(",")])
+    except ValidationError:
+        raise HTTPException(400, "Dataset IDs must be valid uuids.")
+
+    return ids

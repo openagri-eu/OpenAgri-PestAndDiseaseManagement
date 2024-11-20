@@ -14,13 +14,15 @@ def create_rule(
         db: Session = Depends(deps.get_db)
 ):
     """
-    Create a rule such as: temperature > 50 AND air_pressure < 20 AND humidity < 50
+    Create a rule such as: temperature > 50 AND air_pressure < 20 AND humidity < 50 and assign it to a pest model
     """
 
-    if rule.from_time > rule.to_time:
+    pest_model_db = crud.pest_model.get(db=db, id=rule.pest_model_id)
+
+    if not pest_model_db:
         raise HTTPException(
             status_code=400,
-            detail="Times value mismatch, switch them."
+            detail="Error, can't create rule for non-existent pest model"
         )
 
     if len(rule.conditions) == 0:
@@ -74,7 +76,7 @@ def create_rule(
                 detail="Can't have more that two condition per unit."
             )
 
-    cr = CreateRule(name=rule.name, description=rule.description, from_time=rule.from_time, to_time=rule.to_time)
+    cr = CreateRule(name=rule.name, description=rule.description, probability_value=rule.probability_value, pest_model_id=rule.pest_model_id)
     rule_db = crud.rule.create(db=db, obj_in=cr)
 
     for cond in rule.conditions:
@@ -87,7 +89,7 @@ def create_rule(
 @router.get("/", response_model=RulesDB)
 def get_all_rules(
         db: Session = Depends(deps.get_db)
-):
+) -> RulesDB:
     """
     Returns all stored rules.
     """
@@ -97,7 +99,7 @@ def get_all_rules(
     return RulesDB(rules=rules_db)
 
 
-@router.delete("/{rule_id}", response_model=RuleDB)
+@router.delete("/{rule_id}", response_model=Message)
 def delete_rule(
         rule_id: int,
         db: Session = Depends(deps.get_db)
@@ -114,6 +116,6 @@ def delete_rule(
             detail="Can't delete rule that doesn't exist."
         )
 
-    rule_db = crud.rule.remove(db=db, id=rule_id)
+    crud.rule.remove(db=db, id=rule_id)
 
-    return rule_db
+    return Message(message="Successfully removed rule!")

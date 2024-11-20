@@ -14,7 +14,7 @@ class Rule(Base):
     description = Column(String, nullable=True)
     from_time = Column(TIME, nullable=True)
     to_time = Column(TIME, nullable=True)
-    probability_value = Column(String, nullable=True, default="Low")
+    probability_value = Column(String, nullable=True, default="low")
 
     conditions: Mapped[List["Condition"]] = relationship(back_populates="rule", cascade="all,delete")
 
