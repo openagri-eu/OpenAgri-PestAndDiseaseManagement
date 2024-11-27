@@ -14,6 +14,8 @@ def calculate_risk_index_probability(db: Session, weather_dataset_id: int, pest_
     # SQL query for the data
     data_db = crud.data.get_data_interval_query_by_dataset_id(db=db, dataset_id=weather_dataset_id)
 
+    dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
+
     df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
 
     # Calculate the risks associated with each pest_model
@@ -52,26 +54,50 @@ def calculate_risk_index_probability(db: Session, weather_dataset_id: int, pest_
 
             calculated_risks.append(
                 {
-                    "@id": "urn:openagri:pestPrediction:{}".format(uuid.uuid4()),
-                    "@type": "fsm:PestInfestationRisk",
-                    "saref:hasTimestamp": "{}".format(str(date).split(" ")[0] + "T" + str(time)),
-                    "ocsm:hasRiskLevel": "{}".format(risk)
+                    "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(uuid.uuid4()),
+                    "@type": ["Observation", "PestInfestationRisk"],
+                    "phenomenonTime": "{}".format(str(date).split(" ")[0] + "T" + str(time)),
+                    "hasSimpleResult": "{}".format(risk)
                 }
             )
 
-        calculation_response = {
-            "@id": "urn:openagri:pestModel:{}".format(pm.id),
-            "@type": "ocsm:AIPestDetectionModel",
-            "fsm:eppoCode": "UNCINE",
-            "foodie:description": "{}".format(pm.description),
-            "ocsm:hasPredictedInfestationRisks": calculated_risks,
-            "ocsm:basedOnWeatherDataset": {
-                "@id":"urn:openagri:weatherDataset:{}".format(weather_dataset_id),
-                "@type": "ocsm:WeatherDataset"
-            }
+        graph_element = {
+            "@id": "urn:openagri:pestInfectationRisk:{}".format(uuid.uuid4()),
+            "@type": ["ObservationCollection"],
+            "description": "{} pest infectation risk forecast in x ".format(pm.name),
+            "observedProperty": {
+                "@id": "urn:openagri:pestInfectationRisk:op:{}".format(uuid.uuid4()),
+                "@type": ["ObservableProperty", "PestInfection"],
+                "name": "UNCINE pest infection",
+                "hasAgriPest": {
+                    "@id": "urn:openagri:pest:UNCINE",
+                    "@type": "AgriPest",
+                    "name": "UNCINE",
+                    "description": "Uncinula necator (syn. Erysiphe necator) is a fungus that causes powdery mildew of grape. It is a common pathogen of Vitis species, including the wine grape, Vitis vinifera",
+                    "eppoConcept": "https://gd.eppo.int/taxon/UNCINE"
+                }
+            },
+            "madeBySensor": {
+                "@id": "urn:openagri:pestInfectationRisk:model:{}".format(uuid.uuid4()),
+                "@type": ["Sensor", "AIPestDetectionModel"],
+                "name": "AI pest detaction model xyz"
+            },
+            "hasFeatureOfInterest": {
+                "@id": "urn:openagri:pestInfectationRisk:foi:{}".format(uuid.uuid4()),
+                "@type": ["FeatureOfInterest", "Point"],
+                "long": 39.1436719643054,
+                "lat": 27.40518186700786
+            },
+            "basedOnWeatherDataset": {
+                "@id": "urn:openagri:weatherDataset:{}".format(weather_dataset_id),
+                "@type": "WeatherDataset",
+                "name": "{}".format(dataset_db.name)
+            },
+            "resultTime": "2024-10-01T12:00:00+00:00",
+            "hasMember": calculated_risks
         }
 
-        graph.append(calculation_response)
+        graph.append(graph_element)
 
     doc = {
         "@context": context,
