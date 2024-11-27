@@ -37,7 +37,6 @@ class CrudPestModel(CRUDBase[PestModel, CreatePestModel, UpdatePestModel]):
             try:
                 db.commit()
             except SQLAlchemyError:
-                db.rollback()
                 return None
 
             return None
