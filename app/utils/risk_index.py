@@ -23,13 +23,9 @@ def calculate_risk_index_probability(db: Session, weather_dataset_id: int, pest_
         risks_for_current_pm = ["Low"] * df.shape[0]
 
         for rule in pm.rules:
-            conds = []
-            for cond in rule.conditions:
-                conds.append("(x['{}'] {} {})".format(cond.unit.name, cond.operator.symbol, float(cond.value)))
-            pre_final_str = ""
-            for cond_strs in conds[:len(conds) - 1]:
-                pre_final_str = pre_final_str + cond_strs + " & "
-            final_str = pre_final_str + conds[-1]
+            final_str = "(x['{}'] {} {})".format(rule.conditions[0].unit.name, rule.conditions[0].operator.symbol, float(rule.conditions[0].value))
+            for cond in rule.conditions[1:]:
+                final_str = final_str + " & " + "(x['{}'] {} {})".format(cond.unit.name, cond.operator.symbol, float(cond.value))
 
             df_with_risk = df.assign(risk=eval("lambda x: {}".format(final_str)))
 
