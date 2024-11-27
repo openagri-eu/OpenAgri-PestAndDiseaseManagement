@@ -12,7 +12,7 @@ from models import PestModel
 
 def calculate_risk_index_probability(db: Session, weather_dataset_id: int, pest_models: List[PestModel], parameter: Optional[str] = None):
     # SQL query for the data
-    data_db = crud.data.get_data_interval_query_by_dataset_id(db=db, dataset_id=weather_dataset_id)
+    data_db = crud.data.get_data_query_by_dataset_id(db=db, dataset_id=weather_dataset_id)
 
     dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
 
