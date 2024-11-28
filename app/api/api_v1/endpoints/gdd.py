@@ -28,24 +28,28 @@ def calculate_gdd(
         )
 
     data_db = crud.data.get_data_query_by_dataset_id(db=db, dataset_id=weather_dataset_id)
-
     df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
 
-    gdd = 0
-    baseline_temp = 11
+    baseline_temp = 11.0
 
-    gdd_values = []
+    dates = df["date"].to_list()
+    atdas = df["atmospheric_temperature_daily_average"].to_list()
+    final_list_of_gdds = []
+    global_temp_gdd = 0
 
-    for t in df["atmospheric_temperature_daily_average"]:
+    for c in range(len(atdas)):
         curr_gdd = 0
 
-        if t > baseline_temp:
-            curr_gdd = t - baseline_temp
+        if atdas[c] > baseline_temp:
+            curr_gdd = atdas[c] - baseline_temp
 
-        gdd_values.append(gdd + curr_gdd)
+        global_temp_gdd = global_temp_gdd + curr_gdd
 
-        gdd = gdd + curr_gdd
+        final_list_of_gdds.append((dates[c], global_temp_gdd))
 
-    df["gdd"] = gdd_values
+    response = {
+        "total_accumulated_gdd": final_list_of_gdds[-1][1],
+        "gdds_accumulated_per_day": map(lambda x: (str(x[0]).split("T")[0].split(" ")[0], x[1]), final_list_of_gdds)
+    }
 
-    return df
+    return response
