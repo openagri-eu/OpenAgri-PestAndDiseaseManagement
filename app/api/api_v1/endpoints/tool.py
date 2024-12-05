@@ -1,68 +1,90 @@
-import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+import utils
 from api import deps
-from schemas import RiskIndexResponse
+from models import User
+from schemas import list_path_param, DatasetIds
 
-from crud import rule, data
+import crud
 
-import pandas as pd
 
 router = APIRouter()
 
-@router.get("/calculate-risk-index/{rule_id}", response_model=RiskIndexResponse)
-def calculate_risk_index(
-    rule_id: int,
-    from_date: datetime.date,
-    to_date: datetime.date,
-    db: Session = Depends(deps.get_db)
+
+@router.get("/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/verbose")
+def calculate_risk_index_verbose(
+    weather_dataset_id: int,
+    model_ids: DatasetIds = Depends(list_path_param),
+    db: Session = Depends(deps.get_db),
+    user: User = Depends(deps.get_current_user)
 ):
     """
-    Return risk index associated data for frontend to render.
+    Calculates the risk index for some dataset x (weather data for a parcel), using pest models (y,z,...)
+    The risk is calculated by assigning the rule that is valid for a weather datapoint
     """
 
-    rule_db = rule.get(db=db, id=rule_id)
+    # Check ids
+    dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
 
-    if not rule_db:
+    if not dataset_db:
         raise HTTPException(
             status_code=400,
-            detail="Rule with id: {} does not exist.".format(rule_id)
+            detail="Error, dataset with ID:{} does not exist".format(weather_dataset_id)
         )
 
-    if from_date > to_date:
+    pest_models = []
+
+    for mid in model_ids.ids:
+        pest_model_db = crud.pest_model.get(db=db, id=mid)
+
+        if not pest_model_db:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, pest model with ID:{} does not exist".format(mid)
+            )
+
+        pest_models.append(pest_model_db)
+
+    calculations = utils.calculate_risk_index_probability(db=db, weather_dataset_id=weather_dataset_id, pest_models=pest_models)
+
+    return calculations
+
+@router.get("/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/high")
+def calculate_risk_index_high(
+    weather_dataset_id: int,
+    model_ids: DatasetIds = Depends(list_path_param),
+    db: Session = Depends(deps.get_db),
+    user: User = Depends(deps.get_current_user)
+):
+    """
+    Calculates the risk index for some dataset x (weather data for a parcel), using pest models (y,z,...)
+    The risk is calculated by assigning the rule that is valid for a weather datapoint
+    This API only returns "High" risk datapoints
+    """
+
+    # Check ids
+    dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
+
+    if not dataset_db:
         raise HTTPException(
             status_code=400,
-            detail="From and To dates are mismatched, please swap them."
+            detail="Error, dataset with ID:{} does not exist".format(weather_dataset_id)
         )
 
-    # SQL query for the data
-    data_db = data.get_data_interval_query(
-        db=db,
-        from_date=from_date,
-        to_date=to_date,
-        rule_from_time=rule_db.from_time,
-        rule_to_time=rule_db.to_time
-    )
+    pest_models = []
 
-    df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
+    for mid in model_ids.ids:
+        pest_model_db = crud.pest_model.get(db=db, id=mid)
 
-    conds = []
-    for cond in rule_db.conditions:
-        conds.append("(x['{}'] {} {})".format(cond.unit.name, cond.operator.symbol, float(cond.value)))
-    pre_final_str = ""
-    for cond_strs in conds[:len(conds) - 1]:
-        pre_final_str = pre_final_str + cond_strs + " & "
-    final_str = pre_final_str + conds[-1]
+        if not pest_model_db:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, pest model with ID:{} does not exist".format(mid)
+            )
 
-    l_f = "lambda x: {}".format(final_str)
+        pest_models.append(pest_model_db)
 
-    l_f_e = eval(l_f)
+    calculations = utils.calculate_risk_index_probability(db=db, weather_dataset_id=weather_dataset_id, pest_models=pest_models, parameter="High")
 
-    df = df.assign(risk=l_f_e)
-
-    groups = df.groupby("date")["risk"].mean()
-
-    l = [{"risk_index": int(a * 100), "date":b.date()} for a,b in zip(groups.tolist(), groups.index.tolist())]
-    return RiskIndexResponse(rule=rule_db, risk_index_per_day=l)
+    return calculations
