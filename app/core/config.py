@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     GATEKEEPER_USERNAME: str
     GATEKEEPER_PASSWORD: str
     SERVICE_NAME: str
+    LOGGING: bool
 
 
 settings = Settings()
