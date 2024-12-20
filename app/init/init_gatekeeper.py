@@ -27,13 +27,6 @@ def register_apis_to_gatekeeper():
     apis_to_register.include_router(tool.router, prefix="/tool")
     apis_to_register.include_router(unit.router, prefix="/unit")
 
-    print(apis_to_register.routes)
-    print(apis_to_register.routes[0])
-
-    print(apis_to_register.routes[0].path)
-    print(apis_to_register.routes[0].methods)
-
-
     for api in apis_to_register.routes:
 
         requests.post(
