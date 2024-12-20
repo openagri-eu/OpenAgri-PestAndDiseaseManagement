@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     # Gatekeeper info
     USING_GATEKEEPER: bool
     GATEKEEPER_BASE_URL: Optional[AnyHttpUrl] = None
+    GATEKEEPER_USERNAME: str
+    GATEKEEPER_PASSWORD: str
+    SERVICE_NAME: str
 
 
 settings = Settings()

@@ -1,5 +1,9 @@
 import requests
+from fastapi import APIRouter
+
 from core import settings
+
+from api.api_v1.endpoints import operator, pest_model, rule, tool, unit
 
 def register_apis_to_gatekeeper():
 
@@ -7,7 +11,7 @@ def register_apis_to_gatekeeper():
     at = requests.post(
         url=settings.GATEKEEPER_BASE_URL.unicode_string() + "api/login/",
         headers={"Content-Type": "application/json"},
-        json={"username": "admin", "password": "admin"}
+        json={"username": "{}".format(settings.GATEKEEPER_USERNAME), "password": "{}".format(settings.GATEKEEPER_PASSWORD)}
     )
 
     temp = at.json()
@@ -16,23 +20,30 @@ def register_apis_to_gatekeeper():
     refresh = temp["refresh"]
 
     # Register APIs
-    # APIs shouldn't have slashes on their ends even though they do have them
-    apis_to_register = [
-        ("api/v1/data/upload", ["POST"], "pdm"), ("api/v1/pest-model",["POST", "GET"], "pdm"),
-        ("api/v1/rule", ["GET", "POST", "DELETE"], "pdm"),
-        ("api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/verbose", ["GET"], "pdm"),
-        ("api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/high", ["GET"], "pdm")
-    ]
+    apis_to_register = APIRouter()
+    apis_to_register.include_router(operator.router, prefix="/operator")
+    apis_to_register.include_router(pest_model.router, prefix="/pest-model")
+    apis_to_register.include_router(rule.router, prefix="/rule")
+    apis_to_register.include_router(tool.router, prefix="/tool")
+    apis_to_register.include_router(unit.router, prefix="/unit")
 
-    for atr in apis_to_register:
+    print(apis_to_register.routes)
+    print(apis_to_register.routes[0])
+
+    print(apis_to_register.routes[0].path)
+    print(apis_to_register.routes[0].methods)
+
+
+    for api in apis_to_register.routes:
+
         requests.post(
             url=settings.GATEKEEPER_BASE_URL.unicode_string() + "api/register_service/",
             headers={"Content-Type": "application/json", "Authorization" : "Bearer {}".format(access)},
             json={
-                "base_url": "pdm_backend:8003",
-                "service_name": atr[2],
-                "endpoint": atr[0],
-                "methods": atr[1]
+                "base_url": "{}:{}".format(settings.SERVICE_NAME, settings.SERVICE_PORT),
+                "service_name": "pdm",
+                "endpoint": "api/v1/" + api.path.strip("/"),
+                "methods": list(api.methods)
             }
         )
 
