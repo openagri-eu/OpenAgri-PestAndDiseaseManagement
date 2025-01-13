@@ -34,7 +34,7 @@ def register_apis_to_gatekeeper():
             headers={"Content-Type": "application/json", "Authorization" : "Bearer {}".format(access)},
             json={
                 "base_url": "{}:{}".format(settings.SERVICE_NAME, settings.SERVICE_PORT),
-                "service_name": "pdm",
+                "service_name": "{}".format(settings.SERVICE_NAME),
                 "endpoint": "api/v1/" + api.path.strip("/"),
                 "methods": list(api.methods)
             }
