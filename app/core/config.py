@@ -7,7 +7,7 @@ from os import path, environ
 
 
 class Settings(BaseSettings):
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] | List[str] = None
 
     PROJECT_ROOT: str = path.dirname(path.dirname(path.realpath(__file__)))
 
@@ -45,6 +45,15 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRATION_TIME: int
     JWT_KEY: str
+    SERVICE_PORT: int
+    JWT_ALGORITHM: str
+
+    # Gatekeeper info
+    USING_GATEKEEPER: bool
+    GATEKEEPER_BASE_URL: Optional[AnyHttpUrl] = None
+    GATEKEEPER_USERNAME: str
+    GATEKEEPER_PASSWORD: str
+    SERVICE_NAME: str
 
 
 settings = Settings()
