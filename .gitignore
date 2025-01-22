@@ -4,3 +4,4 @@
 .env_local
 __pycache__
 .env
+.cache.sqlite

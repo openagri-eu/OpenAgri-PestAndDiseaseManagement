@@ -1,16 +1,17 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, ConfigDict
 import datetime
 
 
-class CreateData(BaseModel):
+class Temp(BaseModel):
+    pass
+
+class CreateData(Temp):
     model_config = ConfigDict(from_attributes=True)
 
     date: datetime.date
     time: datetime.time
-
-    parcel_location: Optional[str]
 
     atmospheric_temperature: Optional[float]
     atmospheric_temperature_daily_min: Optional[float]
@@ -38,4 +39,27 @@ class CreateData(BaseModel):
 
     solar_irradiance_copernicus: Optional[float]
 
-    dataset_id: int
+class NewCreateData(Temp):
+    model_config = ConfigDict(from_attributes=True)
+
+    date: datetime.date
+    time: datetime.time
+
+    atmospheric_temperature: Optional[float]
+    atmospheric_relative_humidity: Optional[float]
+    atmospheric_pressure: Optional[float]
+    precipitation: Optional[float]
+    average_wind_speed: Optional[float]
+
+    soil_temperature_10cm: Optional[float]
+    soil_temperature_20cm: Optional[float]
+    soil_temperature_30cm: Optional[float]
+    soil_temperature_40cm: Optional[float]
+
+class DataDB(CreateData):
+    id: int
+
+class ListData(BaseModel):
+    list_of_data: List[DataDB]
+
+    model_config = ConfigDict(from_attributes=True)

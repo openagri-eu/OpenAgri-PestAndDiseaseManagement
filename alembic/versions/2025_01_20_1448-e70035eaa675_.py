@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: dbfa4e52780b
+Revision ID: e70035eaa675
 Revises: 
-Create Date: 2024-11-14 18:51:44.678115
+Create Date: 2025-01-20 14:48:27.333678
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'dbfa4e52780b'
+revision: str = 'e70035eaa675'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,15 +27,17 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('id')
     )
-    op.create_table('dataset',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('id')
-    )
     op.create_table('operator',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('symbol', sa.String(), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('id')
+    )
+    op.create_table('parcel',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('latitude', sa.Float(), nullable=False),
+    sa.Column('longitude', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('id')
     )
@@ -74,7 +76,6 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('date', sa.Date(), nullable=True),
     sa.Column('time', sa.Time(), nullable=True),
-    sa.Column('parcel_location', sa.String(), nullable=True),
     sa.Column('atmospheric_temperature', sa.Float(), nullable=True),
     sa.Column('atmospheric_temperature_daily_min', sa.Float(), nullable=True),
     sa.Column('atmospheric_temperature_daily_max', sa.Float(), nullable=True),
@@ -95,8 +96,8 @@ def upgrade() -> None:
     sa.Column('soil_temperature_50cm', sa.Float(), nullable=True),
     sa.Column('soil_temperature_60cm', sa.Float(), nullable=True),
     sa.Column('solar_irradiance_copernicus', sa.Float(), nullable=True),
-    sa.Column('dataset_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['dataset_id'], ['dataset.id'], ),
+    sa.Column('parcel_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['parcel_id'], ['parcel.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('id')
     )
@@ -137,7 +138,7 @@ def downgrade() -> None:
     op.drop_table('user')
     op.drop_table('unit')
     op.drop_table('pest')
+    op.drop_table('parcel')
     op.drop_table('operator')
-    op.drop_table('dataset')
     op.drop_table('action')
     # ### end Alembic commands ###
