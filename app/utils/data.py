@@ -20,8 +20,6 @@ def fetch_historical_data_for_parcel(db: Session, parcel: Parcel):
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
     openmeteo = openmeteo_requests.Client(session=retry_session)
 
-    print("setup openmeteo api")
-
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": "{}".format(parcel.latitude),

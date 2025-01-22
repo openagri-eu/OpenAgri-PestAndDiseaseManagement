@@ -24,14 +24,10 @@ def get_open_meteo_data():
         session.close()
         return
 
-    print("got parcels")
-
     # Set up the Open-Meteo API client with cache and retry on error
     cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
     openmeteo = openmeteo_requests.Client(session=retry_session)
-
-    print("setup openmeteo api")
 
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -43,8 +39,6 @@ def get_open_meteo_data():
         "past_days": 1
     }
     responses = openmeteo.weather_api(url, params=params)
-
-    print("got response")
 
     for parcel, parcel_db in zip(responses, parcels):
         # Process hourly data. The order of variables needs to be the same as requested.
@@ -86,16 +80,8 @@ def get_open_meteo_data():
 
         hourly_dataframe = hourly_dataframe[(hourly_dataframe["date"] < date.today().strftime("%Y-%m-%d")) & (hourly_dataframe["date"] >= (date.today() - timedelta(days=1)).strftime("%Y-%m-%d"))]
 
-        print("formatted df, getting ready for batch insert")
-
-        print(hourly_dataframe.head(160).to_string())
-
-        for x in hourly_dataframe.itertuples():
-            print(x)
-
         # check whether data already present (to dodge duplicates)
         if crud.data.get_data_by_parcel_id_and_date(db=session, parcel_id=parcel_db.id, date=hourly_dataframe.iloc[0]["date"].split(" ")[0], time=hourly_dataframe.iloc[0]["date"].split(" ")[1]):
-            print("data already present, dumping call")
             continue
 
         crud.data.batch_insert(
@@ -117,8 +103,6 @@ def get_open_meteo_data():
             ],
             parcel_id=parcel_db.id
         )
-
-        print("done with this batch: {}".format(date.today()))
 
     openmeteo.session.close()
     session.close()
