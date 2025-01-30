@@ -11,7 +11,10 @@ def register_apis_to_gatekeeper():
     at = requests.post(
         url=settings.GATEKEEPER_BASE_URL.unicode_string() + "api/login/",
         headers={"Content-Type": "application/json"},
-        json={"username": "{}".format(settings.GATEKEEPER_USERNAME), "password": "{}".format(settings.GATEKEEPER_PASSWORD)}
+        json={
+            "username": "{}".format(settings.GATEKEEPER_USERNAME),
+            "password": "{}".format(settings.GATEKEEPER_PASSWORD)
+        }
     )
 
     temp = at.json()
