@@ -1,3 +1,4 @@
+import datetime
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -7,14 +8,15 @@ import crud
 import utils
 import uuid
 
-from models import PestModel
+from models import PestModel, Parcel
 
 
-def calculate_risk_index_probability(db: Session, weather_dataset_id: int, pest_models: List[PestModel], parameter: Optional[str] = None):
+def calculate_risk_index_probability(db: Session, parcel: Parcel, pest_models: List[PestModel],
+                                     from_date: datetime.date, to_date:datetime.date,
+                                     parameter: Optional[str] = None):
     # SQL query for the data
-    data_db = crud.data.get_data_query_by_dataset_id(db=db, dataset_id=weather_dataset_id)
-
-    dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
+    data_db = crud.data.get_data_query_by_parcel_id_and_date_interval(db=db, parcel_id=parcel.id,
+                                                                      date_from=from_date, date_to=to_date)
 
     df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
 
@@ -81,15 +83,15 @@ def calculate_risk_index_probability(db: Session, weather_dataset_id: int, pest_
             "hasFeatureOfInterest": {
                 "@id": "urn:openagri:pestInfectationRisk:foi:{}".format(uuid.uuid4()),
                 "@type": ["FeatureOfInterest", "Point"],
-                "long": 39.1436719643054,
-                "lat": 27.40518186700786
+                "long": "{}".format(parcel.longitude),
+                "lat": "{}".format(parcel.latitude)
             },
             "basedOnWeatherDataset": {
-                "@id": "urn:openagri:weatherDataset:{}".format(weather_dataset_id),
+                "@id": "urn:openagri:weatherDataset:{}".format(parcel.id),
                 "@type": "WeatherDataset",
-                "name": "{}".format(dataset_db.name)
+                "name": "parcel_name_tba"
             },
-            "resultTime": "2024-10-01T12:00:00+00:00",
+            "resultTime": "{}".format(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
             "hasMember": calculated_risks
         }
 

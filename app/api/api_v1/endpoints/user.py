@@ -1,3 +1,4 @@
+import requests
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Any
@@ -29,14 +30,35 @@ def register(
                    "contain at least one uppercase and one lowercase letter, one digit and have no spaces."
         )
 
-    user_db = user.get_by_email(db=db, email=user_information.email)
-    if user_db:
-        raise HTTPException(
-            status_code=400,
-            detail="User with email:{} already exists.".format(user_information.email)
-        )
+    if settings.USING_GATEKEEPER:
+        try:
+            response = requests.post(
+                url=settings.GATEKEEPER_BASE_URL.unicode_string() + "api/register/",
+                headers={"Content-Type": "application/json"},
+                json={"username": user_information.email,
+                      "email": user_information.email, "password": user_information.password}
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail="Error when sending request to gk, original error: {}".format(e)
+            )
 
-    user.create(db=db, obj_in=user_information)
+        if response.status_code == 400:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, got 400 from gk"
+            )
+
+    else:
+        user_db = user.get_by_email(db=db, email=user_information.email)
+        if user_db:
+            raise HTTPException(
+                status_code=400,
+                detail="User with email:{} already exists.".format(user_information.email)
+            )
+
+        user.create(db=db, obj_in=user_information)
 
     response = Message(
         message="You have successfully registered!"

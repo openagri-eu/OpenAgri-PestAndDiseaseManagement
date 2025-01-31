@@ -1,98 +1,92 @@
 import datetime
+from datetime import timedelta
 
-from fastapi import HTTPException
+import openmeteo_requests
+import pandas as pd
+import requests_cache
+from retry_requests import retry
+from sqlalchemy.orm import Session
 
-from schemas import CreateData
+import crud
+from models import Parcel
+from schemas import NewCreateData
 
-possible_column_names = [
-        "date", "time", "parcel_location", "atmospheric_temperature", "atmospheric_temperature_daily_min",
-        "atmospheric_temperature_daily_max", "atmospheric_temperature_daily_average", "atmospheric_relative_humidity",
-        "atmospheric_pressure", "precipitation", "average_wind_speed", "wind_direction", "wind_gust",
-        "leaf_relative_humidity", "leaf_temperature", "leaf_wetness", "soil_temperature_10cm", "soil_temperature_20cm",
-        "soil_temperature_30cm", "soil_temperature_40cm", "soil_temperature_50cm", "soil_temperature_60cm",
-        "solar_irradiance_copernicus"
-    ]
 
-async def read_rows_csv(csv_reader, new_dataset, usable_column_names):
-    rows = []
-    for row in csv_reader:
-        try:
-            leaf_wetness = float(row[usable_column_names["leaf_wetness"]].replace(",",
-                                                                                  ".")) if "leaf_wetness" in usable_column_names else None
+def fetch_historical_data_for_parcel(db: Session, parcel: Parcel):
 
-            if leaf_wetness and (leaf_wetness < 0.0 or leaf_wetness > 1.0):
-                raise ValueError
 
-            obj_in = CreateData(
-                date=datetime.datetime.strptime(row[usable_column_names["date"]], "%Y-%m-%d"),
-                time=datetime.datetime.strptime(row[usable_column_names["time"]], "%H:%M:%S").time(),
+    # Set up the Open-Meteo API client with cache and retry on error
+    cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
+    retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+    openmeteo = openmeteo_requests.Client(session=retry_session)
 
-                parcel_location=row[
-                    usable_column_names["parcel_location"]] if "parcel_location" in usable_column_names else None,
+    url = "https://archive-api.open-meteo.com/v1/archive"
+    params = {
+        "latitude": "{}".format(parcel.latitude),
+        "longitude": "{}".format(parcel.longitude),
+        "start_date": "{}".format((datetime.datetime.now() - timedelta(days=365)).date().strftime("%Y-%m-%d")),
+        "end_date": "{}".format((datetime.datetime.now() - timedelta(days=2)).date().strftime("%Y-%m-%d")),
+        "hourly": ["temperature_2m", "relative_humidity_2m", "precipitation", "surface_pressure", "wind_speed_10m",
+                   "soil_temperature_0_to_7cm", "soil_temperature_7_to_28cm", "soil_temperature_28_to_100cm",
+                   "soil_temperature_100_to_255cm"],
+        "timezone": "auto",
+        "elevation": "NaN"
+        }
+    responses = openmeteo.weather_api(url, params=params)
 
-                atmospheric_temperature=float(row[usable_column_names["atmospheric_temperature"]].replace(",",
-                                                                                                          ".")) if "atmospheric_temperature" in usable_column_names else None,
-                atmospheric_temperature_daily_min=float(
-                    row[usable_column_names["atmospheric_temperature_daily_min"]].replace(",",
-                                                                                          ".")) if "atmospheric_temperature_daily_min" in usable_column_names else None,
-                atmospheric_temperature_daily_max=float(
-                    row[usable_column_names["atmospheric_temperature_daily_max"]].replace(",",
-                                                                                          ".")) if "atmospheric_temperature_daily_max" in usable_column_names else None,
-                atmospheric_temperature_daily_average=float(
-                    row[usable_column_names["atmospheric_temperature_daily_average"]].replace(",",
-                                                                                              ".")) if "atmospheric_temperature_daily_average" in usable_column_names else None,
-                atmospheric_relative_humidity=float(
-                    row[usable_column_names["atmospheric_relative_humidity"]].replace(",",
-                                                                                      ".")) if "atmospheric_relative_humidity" in usable_column_names else None,
-                atmospheric_pressure=float(row[usable_column_names["atmospheric_pressure"]].replace(",",
-                                                                                                    ".")) if "atmospheric_pressure" in usable_column_names else None,
+    # Process hourly data. The order of variables needs to be the same as requested.
+    hourly = responses[0].Hourly()
+    hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
+    hourly_relative_humidity_2m = hourly.Variables(1).ValuesAsNumpy()
+    hourly_precipitation = hourly.Variables(2).ValuesAsNumpy()
+    hourly_surface_pressure = hourly.Variables(3).ValuesAsNumpy()
+    hourly_wind_speed_10m = hourly.Variables(4).ValuesAsNumpy()
+    hourly_soil_temperature_0_to_7cm = hourly.Variables(5).ValuesAsNumpy()
+    hourly_soil_temperature_7_to_28cm = hourly.Variables(6).ValuesAsNumpy()
+    hourly_soil_temperature_28_to_100cm = hourly.Variables(7).ValuesAsNumpy()
+    hourly_soil_temperature_100_to_255cm = hourly.Variables(8).ValuesAsNumpy()
 
-                precipitation=float(row[usable_column_names["precipitation"]].replace(",",
-                                                                                      ".")) if "precipitation" in usable_column_names else None,
+    hourly_data = {"date": pd.date_range(
+        start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+        end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+        freq=pd.Timedelta(seconds=hourly.Interval()),
+        inclusive="left"
+    )}
 
-                average_wind_speed=float(row[usable_column_names["average_wind_speed"]].replace(",",
-                                                                                                ".")) if "average_wind_speed" in usable_column_names else None,
-                wind_direction=row[
-                    usable_column_names["wind_direction"]] if "wind_direction" in usable_column_names else None,
-                wind_gust=float(row[usable_column_names["wind_gust"]].replace(",",
-                                                                              ".")) if "wind_gust" in usable_column_names else None,
+    hourly_data["temperature_2m"] = hourly_temperature_2m
+    hourly_data["relative_humidity_2m"] = hourly_relative_humidity_2m
+    hourly_data["precipitation"] = hourly_precipitation
+    hourly_data["surface_pressure"] = hourly_surface_pressure
+    hourly_data["wind_speed_10m"] = hourly_wind_speed_10m
+    hourly_data["soil_temperature_0_to_7cm"] = hourly_soil_temperature_0_to_7cm
+    hourly_data["soil_temperature_7_to_28cm"] = hourly_soil_temperature_7_to_28cm
+    hourly_data["soil_temperature_28_to_100cm"] = hourly_soil_temperature_28_to_100cm
+    hourly_data["soil_temperature_100_to_255cm"] = hourly_soil_temperature_100_to_255cm
 
-                leaf_relative_humidity=float(row[usable_column_names["leaf_relative_humidity"]].replace(",",
-                                                                                                        ".")) if "leaf_relative_humidity" in usable_column_names else None,
-                leaf_temperature=float(row[usable_column_names["leaf_temperature"]].replace(",",
-                                                                                            ".")) if "leaf_temperature" in usable_column_names else None,
-                leaf_wetness=leaf_wetness,
+    hourly_dataframe = pd.DataFrame(data=hourly_data)
 
-                soil_temperature_10cm=float(row[usable_column_names["soil_temperature_10cm"]].replace(",",
-                                                                                                      ".")) if "soil_temperature_10cm" in usable_column_names else None,
-                soil_temperature_20cm=float(row[usable_column_names["soil_temperature_20cm"]].replace(",",
-                                                                                                      ".")) if "soil_temperature_20cm" in usable_column_names else None,
-                soil_temperature_30cm=float(row[usable_column_names["soil_temperature_30cm"]].replace(",",
-                                                                                                      ".")) if "soil_temperature_30cm" in usable_column_names else None,
-                soil_temperature_40cm=float(row[usable_column_names["soil_temperature_40cm"]].replace(",",
-                                                                                                      ".")) if "soil_temperature_40cm" in usable_column_names else None,
-                soil_temperature_50cm=float(row[usable_column_names["soil_temperature_50cm"]].replace(",",
-                                                                                                      ".")) if "soil_temperature_50cm" in usable_column_names else None,
-                soil_temperature_60cm=float(row[usable_column_names["soil_temperature_60cm"]].replace(",",
-                                                                                                      ".")) if "soil_temperature_60cm" in usable_column_names else None,
+    hourly_dataframe["date"] = hourly_dataframe["date"].astype(str)
 
-                solar_irradiance_copernicus=float(row[usable_column_names[
-                    "solar_irradiance_copernicus"]]) if "solar_irradiance_copernicus" in usable_column_names else None,
+    crud.data.batch_insert(
+        db=db,
+        list_of_data=[
+            NewCreateData(
+                date=x[1].split(" ")[0],
+                time=x[1].split(" ")[1],
+                atmospheric_temperature=x[2],
+                atmospheric_relative_humidity=x[3],
+                precipitation=x[4],
+                atmospheric_pressure=x[5],
+                average_wind_speed=x[6],
+                soil_temperature_10cm=x[7],
+                soil_temperature_20cm=x[8],
+                soil_temperature_30cm=x[9],
+                soil_temperature_40cm=x[10]
+            ) for x in hourly_dataframe.itertuples()
+        ],
+        parcel_id=parcel.id
+    )
 
-                dataset_id=new_dataset.id
-            )
-        except HTTPException:
-            raise HTTPException(
-                status_code=400,
-                detail="Error when parsing row, present leaf_wetness data is out of bounds, bounds: [0, 1], row in question: {}".format(
-                    row)
-            )
-        except Exception:
-            raise HTTPException(
-                status_code=400,
-                detail="Error when parsing row, data format unexpected (might be wrong data in wrong column, number in descriptor), row in question (might be missing date or time as well) ({})".format(
-                    row)
-            )
 
-        rows.append(obj_in)
-    return rows
+    openmeteo.session.close()
+    return
