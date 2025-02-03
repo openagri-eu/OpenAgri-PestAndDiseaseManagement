@@ -106,6 +106,3 @@ def get_open_meteo_data():
 
     openmeteo.session.close()
     session.close()
-
-if __name__ == "__main__":
-    get_open_meteo_data()
