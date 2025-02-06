@@ -1,3 +1,5 @@
+import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -12,25 +14,32 @@ import crud
 router = APIRouter()
 
 
-@router.get("/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/verbose")
+@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/")
 def calculate_risk_index_verbose(
-    weather_dataset_id: int,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    parcel_id: int,
     model_ids: DatasetIds = Depends(list_path_param),
     db: Session = Depends(deps.get_db),
     user: User = Depends(deps.get_current_user)
 ):
     """
-    Calculates the risk index for some dataset x (weather data for a parcel), using pest models (y,z,...)
-    The risk is calculated by assigning the rule that is valid for a weather datapoint
+    Calculates the risk index for some parcel x, a period of time (i.e. 2025-01-01 -> 2025-01-31) and a pest model.
     """
 
-    # Check ids
-    dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
-
-    if not dataset_db:
+    if from_date > to_date:
         raise HTTPException(
             status_code=400,
-            detail="Error, dataset with ID:{} does not exist".format(weather_dataset_id)
+            detail="Error, from_date is later than to_date, please swap them."
+        )
+
+    # Check ids
+    parcel_db = crud.parcel.get(db=db, id=parcel_id)
+
+    if not parcel_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, parcel with ID:{} does not exist".format(parcel_id)
         )
 
     pest_models = []
@@ -46,30 +55,39 @@ def calculate_risk_index_verbose(
 
         pest_models.append(pest_model_db)
 
-    calculations = utils.calculate_risk_index_probability(db=db, weather_dataset_id=weather_dataset_id, pest_models=pest_models)
+    calculations = utils.calculate_risk_index_probability(db=db, parcel=parcel_db, pest_models=pest_models,
+                                                          from_date=from_date, to_date=to_date)
 
     return calculations
 
-@router.get("/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/high")
+@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/high/{from_date}/from/{to_date}/to/")
 def calculate_risk_index_high(
-    weather_dataset_id: int,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    parcel_id: int,
     model_ids: DatasetIds = Depends(list_path_param),
     db: Session = Depends(deps.get_db),
     user: User = Depends(deps.get_current_user)
 ):
     """
-    Calculates the risk index for some dataset x (weather data for a parcel), using pest models (y,z,...)
-    The risk is calculated by assigning the rule that is valid for a weather datapoint
+    Calculates the risk index for some parcel x, a period of time (i.e. 2025-01-01 -> 2025-01-31) and a pest model.
+
     This API only returns "High" risk datapoints
     """
 
-    # Check ids
-    dataset_db = crud.dataset.get(db=db, id=weather_dataset_id)
-
-    if not dataset_db:
+    if from_date > to_date:
         raise HTTPException(
             status_code=400,
-            detail="Error, dataset with ID:{} does not exist".format(weather_dataset_id)
+            detail="Error, from_date is later than to_date, please swap them."
+        )
+
+    # Check ids
+    parcel_db = crud.parcel.get(db=db, id=parcel_id)
+
+    if not parcel_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, parcel with ID:{} does not exist".format(parcel_id)
         )
 
     pest_models = []
@@ -85,6 +103,7 @@ def calculate_risk_index_high(
 
         pest_models.append(pest_model_db)
 
-    calculations = utils.calculate_risk_index_probability(db=db, weather_dataset_id=weather_dataset_id, pest_models=pest_models, parameter="High")
+    calculations = utils.calculate_risk_index_probability(db=db, parcel=parcel_db, pest_models=pest_models,
+                                                          from_date=from_date, to_date=to_date, parameter="high")
 
     return calculations

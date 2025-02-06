@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, Date, Time, String, Float, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.testing.schema import mapped_column
 
 from db.base_class import Base
 
@@ -10,7 +11,6 @@ class Data(Base):
 
     date = Column(Date, nullable=True)
     time = Column(Time, nullable=True)
-    parcel_location = Column(String, nullable=True)
 
     atmospheric_temperature = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
     atmospheric_temperature_daily_min = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
@@ -25,10 +25,12 @@ class Data(Base):
     wind_direction = Column(String, nullable=True)
     wind_gust = Column(Float, nullable=True, info={"unit_of_measure": "km/h"})
 
+    # OPen meteo nema ove
     leaf_relative_humidity = Column(Float, nullable=True, info={"unit_of_measure": "percentage"})
     leaf_temperature = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
     leaf_wetness = Column(Float, nullable=True, info={"unit_of_measure": "time-frame"})
 
+    # ima 0-7, 7-28, 28-100, 100-255
     soil_temperature_10cm = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
     soil_temperature_20cm = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
     soil_temperature_30cm = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
@@ -36,8 +38,8 @@ class Data(Base):
     soil_temperature_50cm = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
     soil_temperature_60cm = Column(Float, nullable=True, info={"unit_of_measure": "celsius"})
 
+    # nema
     solar_irradiance_copernicus = Column(Float, nullable=True, info={"unit_of_measure": "W/m2"})
 
-
-    dataset_id : Mapped[int] = mapped_column(ForeignKey("dataset.id"))
-    dataset: Mapped["Dataset"] = relationship(back_populates="data")
+    parcel_id: Mapped[int] = mapped_column(ForeignKey("parcel.id"))
+    parcel: Mapped["Parcel"] = relationship(back_populates="data")

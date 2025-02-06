@@ -48,8 +48,16 @@ def init_operators():
 
 
 def init_db():
-    already_exists = db.query(Unit).filter(Unit.name == "atmospheric_temperature").first()
-    if already_exists:
+    need_init = False
+
+    try:
+        res = db.query(Unit).filter(Unit.name == "atmospheric_temperature").first()
+        if not res:
+            need_init = True
+    except Exception:
+        need_init = True
+
+    if not need_init:
         db.close()
         return
 

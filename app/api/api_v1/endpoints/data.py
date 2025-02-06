@@ -1,33 +1,42 @@
-import datetime
+from typing import List
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import crud
-import utils
 from api import deps
 from models import User
-from schemas import Message, BaseDataset
-
-from csv import reader
-from codecs import iterdecode
-
-from utils.data import read_rows_csv
+from schemas import Message, CreateData, ListData
 
 router = APIRouter()
 
+@router.get("/", response_model=ListData)
+def get_all_data(
+        db: Session = Depends(deps.get_db),
+        user: User = Depends(deps.get_current_user)
+) -> ListData:
+    """
+    This API returns all weather data present in the db.
 
-@router.post("/upload/", response_model=Message)
-async def upload(
-        csv_file: UploadFile = File(...),
+    WARNING: WILL BE SLOWER AS MORE DATA IS ACCRUED OVER TIME
+    """
+
+    response_object = crud.data.get_all(db=db)
+
+    return ListData(list_of_data=response_object)
+
+
+@router.post("/{parcel_id}", response_model=Message)
+def upload_weather_data_for_parcel(
+        parcel_id: int,
+        data: List[CreateData],
         db: Session = Depends(deps.get_db),
         user: User = Depends(deps.get_current_user)
 ) -> Message:
     """
-    Upload a .csv file that contains data about weather.
+    Manually upload one or more weather data points.
 
-    List of columns that this api will parse:
-
+    Elements contain:
     [
         "date", "time", "parcel_location", "atmospheric_temperature", "atmospheric_temperature_daily_min",
         "atmospheric_temperature_daily_max", "atmospheric_temperature_daily_average", "atmospheric_relative_humidity",
@@ -41,83 +50,46 @@ async def upload(
 
     date format: %Y-%m-%d
     time format: %H:%M:%S
-
-    any decimal numbers present in the dataset should be formatted using "." (dot) and not "," (comma),
-    but nevertheless, the api will attempt to swap "," for ".".
-
     """
 
-    dataset_db = crud.dataset.get_by_name(db=db, name=csv_file.filename)
+    parcel_db = crud.parcel.get(db=db, id=parcel_id)
 
-    if dataset_db:
+    if not parcel_db:
         raise HTTPException(
             status_code=400,
-            detail="Error, dataset with same filename already uploaded, please rename your dataset"
+            detail="Error, parcel with ID:{} does not exist".format(parcel_id)
         )
 
-    csv_reader = reader(iterdecode(csv_file.file, "utf-8-sig"), delimiter=";")
+    crud.data.batch_insert(db=db, list_of_data=data, parcel_id=parcel_id)
 
-    # Parse the .csv headers
-    headers = next(csv_reader)
+    response_object = Message(
+        message="Successfully uploaded data."
+    )
 
-    possible_column_names = utils.possible_column_names
+    return response_object
 
-    # If there are more columns than what is expected, decline the dataset
-    if len(headers) > len(possible_column_names):
+@router.delete("/{data_id}", response_model=Message)
+def remove_data_point(
+        data_id: int,
+        db: Session = Depends(deps.get_db),
+        user: User = Depends(deps.get_current_user)
+) -> Message:
+    """
+    Remove a single weather datapoint
+    """
+
+    data_db = crud.data.get(db=db, id=data_id)
+
+    if not data_db:
         raise HTTPException(
             status_code=400,
-            detail="Error, dataset has more than {} columns, not supported, please conform to required dataset format".format(len(possible_column_names))
+            detail="Error, data point with ID:{} does not exist.".format(data_id)
         )
 
-    # if there is no useful information then decline the dataset (see comment #A)
-    if len(headers) < 3:
-        raise HTTPException(
-            status_code=400,
-            detail="Error, won't accept dataset with less than 3 columns, please provide more information in the dataset"
-        )
+    crud.data.remove(db=db, id=data_id)
 
-    if "date" not in headers or "time" not in headers:
-        raise HTTPException(
-            status_code=400,
-            detail="Error, can't upload dataset with no date or time information"
-        )
+    response_object = Message(
+        message="Successfully removed datapoint with ID:{}".format(data_id)
+    )
 
-    # Find usable columns and their place in the file (column sequence)
-    usable_column_names = {}
-
-    col_pos = 0
-    for col in headers:
-        if col in possible_column_names:
-            usable_column_names[col] = col_pos
-        col_pos = col_pos + 1
-
-    #A
-    # Refuse to accept dataset if there is only date+time information.
-    # If but one of these is missing, then we have date+something or time+something which is again, useless.
-    if len(usable_column_names.items()) < 3:
-        raise HTTPException(
-            status_code=400,
-            detail="Error, .csv contains two or less usable columns, please upload a file with more columns"
-        )
-
-    new_dataset = crud.dataset.create(db=db, obj_in=BaseDataset(name=csv_file.filename))
-
-    try:
-        rows = await read_rows_csv(csv_reader, new_dataset, usable_column_names)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="leaf_wetness row value is out of bounds, bounds: [0, 1]"
-        )
-
-    batch_data = crud.data.batch_insert(db=db, rows=rows)
-
-    if not batch_data:
-        crud.dataset.remove(db=db, id=new_dataset.id)
-
-        raise HTTPException(
-            status_code=400,
-            detail="Unable to create dataset, error with database, please contact repository maintainer"
-        )
-
-    return Message(message="Successfully uploaded file.")
+    return response_object

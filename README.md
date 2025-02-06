@@ -173,7 +173,7 @@ This pest model can then be assigned rules via the POST /rule/ API.
 <h3> POST </h3>
 
 ```
-/api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/verbose
+/api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/verbose/
 ```
 
 Path parameters:
@@ -267,7 +267,7 @@ This object holds the "ocsm:hasRiskLevel" key which will have either "Low", "Med
 <h3> POST </h3>
 
 ```
-api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/high
+api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/high/
 ```
 
 Path parameters:

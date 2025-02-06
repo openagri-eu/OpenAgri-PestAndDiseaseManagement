@@ -4,7 +4,7 @@ from api import deps
 
 import crud
 from models import User
-from schemas import PestModels, CreatePestModel, PestModelDB, CreateRule, CreateCondition
+from schemas import PestModels, CreatePestModel, PestModelDB, Message, CreateCondition, CreateRule
 
 import pandas as pd
 
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/", response_model=PestModels)
 def get_pest_models(
         db: Session = Depends(deps.get_db),
-        user: User = Depends(deps.get_current_user)
+        current_user: User = Depends(deps.get_current_user)
 ):
     """
     Returns all pest models
@@ -28,7 +28,7 @@ def get_pest_models(
 def create_pest_model(
         pm: CreatePestModel,
         db: Session = Depends(deps.get_db),
-        user: User = Depends(deps.get_current_user)
+        current_user: User = Depends(deps.get_current_user)
 ):
     """
     Create a base pest model
@@ -36,14 +36,14 @@ def create_pest_model(
 
     return crud.pest_model.create(db=db, obj_in=pm)
 
-@router.post("/upload-excel/")
+@router.post("/upload-excel/", response_model=Message)
 def upload_pest_model(
         excel_file: UploadFile = File(...),
         db: Session = Depends(deps.get_db),
-        user: User = Depends(deps.get_current_user)
-):
+        current_user: User = Depends(deps.get_current_user)
+) -> Message:
     """
-    Upload pest models via a file (excel)
+    Upload pest models via a definition file (excel)
     """
 
     df = pd.read_excel(excel_file.file)
@@ -179,4 +179,4 @@ def upload_pest_model(
 
                     crud.condition.create(db=db, obj_in=condition_schema)
 
-    return "mowgli"
+    return Message(message="Successfully created pest models from file!")
