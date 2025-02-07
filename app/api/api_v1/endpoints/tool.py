@@ -107,3 +107,18 @@ def calculate_risk_index_high(
                                                           from_date=from_date, to_date=to_date, parameter="high")
 
     return calculations
+
+
+@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/")
+def calculate_gdd(
+    from_date: datetime.date,
+    to_date: datetime.date,
+    parcel_id: int,
+
+    db: Session = Depends(deps.get_db),
+    user: User = Depends(deps.get_current_user)
+):
+    """
+    Calculates and returns GDD for pest in parcel and date interval
+    """
+
