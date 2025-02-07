@@ -109,8 +109,7 @@ def get_open_meteo_data():
                 ],
                 parcel_id=parcel_db.id
             )
-    except Exception as ex:
-        print(ex)
+    except Exception:
         openmeteo.session.close()
         session.close()
 
