@@ -25,6 +25,8 @@ def get_open_meteo_data():
         return
 
     # Set up the Open-Meteo API client with cache and retry on error
+    # Set to 240, in an attempt to solve issue of service failing to fetch data after having worked for ~3 weeks.
+    # This: https://github.com/open-meteo/open-meteo/issues/1042 issue was found and examined.
     cache_session = requests_cache.CachedSession('.cache', expire_after=240)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
     openmeteo = openmeteo_requests.Client(session=retry_session)
