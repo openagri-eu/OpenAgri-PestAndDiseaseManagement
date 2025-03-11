@@ -31,6 +31,12 @@ A full list of APIs can be viewed [here](https://editor-next.swagger.io/?url=htt
 /api/v1/parcel/
 ```
 
+<h3> Description </h3>
+
+```
+Create a parcel with the assigned latitude and longitude values.
+```
+
 <h3> Request body: </h3>
 
 ```json
@@ -53,6 +59,12 @@ A full list of APIs can be viewed [here](https://editor-next.swagger.io/?url=htt
 
 ```
 /api/v1/parcel/wkt-format/
+```
+
+<h3> Description </h3>
+
+```
+Creates a parcel based on geometric data provided in the WKT format.
 ```
 
 <h3> Request body: </h3>
@@ -78,6 +90,12 @@ You can learn more about the WKT format standard [here](https://en.wikipedia.org
 
 ```
 /api/v1/disease/
+```
+
+<h3> Description </h3>
+
+```
+Create a representation of a crop disease within the system.
 ```
 
 <h3> Request body: </h3>
@@ -173,6 +191,12 @@ You can learn more about the WKT format standard [here](https://en.wikipedia.org
 /api/v1/tool/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/
 ```
 
+<h3> Description </h3>
+
+```
+Calculate the growing degree days values for some pest models, on a parcel, withing a data interval.
+```
+
 <h3> Request body: </h3>
 
 Nothing
@@ -239,7 +263,7 @@ from_date, to_date, parcel_id, model_ids
 The above example is returned when querying with the following parameters: \
 from_date - 2025-01-15 \
 to_date - 2025-01-20 \
-parcel and model ids - dependant on parcel upload and model creation.
+parcel and model ids - dependent on parcel upload and model creation.
 
 <h3> POST </h3>
 
@@ -247,9 +271,15 @@ parcel and model ids - dependant on parcel upload and model creation.
 /api/v1/data/upload/
 ```
 
-Request body: \
-This API expects a dataset in the form of a .csv file. \
-This .csv file must contain "date" and "time" as columns, as well as at least one of the following columns:
+<h3> Description </h3>
+
+```
+This API expects a dataset in the form of a .csv file.
+This .csv file must contain "date" and "time" as columns,
+as well as at least one of the following columns in the request body.
+```
+
+Request body:
 
 ```
 "parcel_location", "atmospheric_temperature", "atmospheric_temperature_daily_min",
@@ -310,6 +340,12 @@ Response example:
 /api/v1/pest-model/
 ```
 
+<h3> Description </h3>
+
+```
+Return a list of pest models that have been created.
+```
+
 Request body:
 
 Nothing
@@ -335,12 +371,16 @@ Response example:
 }
 ```
 
-This API returns a list of pest models currently in the system.
-
 <h3> POST </h3>
 
 ```
 /api/v1/pest-model/
+```
+
+<h3> Description </h3>
+
+```
+Create an empty pest model that requires rules to be assigned for it's definition.
 ```
 
 Request body:
@@ -349,7 +389,7 @@ Request body:
 {
   "name": "Phytophthora sojae",
   "description": "Phytophthora sojae is an oomycete pathogen of soybean, classified in the kingdom Stramenopiles. It causes 'damping off' of seedlings and root rot of older plants.",
-  "geo_areas_of_application": "POLYGON ((14.2345, -2.2345))",
+  "geo_areas_of_application": "POLYGON ((25.2 16.2, 16.2 16.15, 17.2 15.2, 20.1 20.1, 25.2 16.2))",
   "cultivations": [ "soybean", "bluebonnet", "lupinus albus" ]
 }
 ```
@@ -361,21 +401,27 @@ Response example:
   "id": "9489c55a-847c-4cd2-8392-ddc72b549ec4",
   "name": "Phytophthora sojae",
   "description": "Phytophthora sojae is an oomycete pathogen of soybean, classified in the kingdom Stramenopiles. It causes 'damping off' of seedlings and root rot of older plants.",
-  "geo_areas_of_application": "POLYGON ((14.2345, -2.2345))"
+  "geo_areas_of_application": "POLYGON ((25.2 16.2, 16.2 16.15, 17.2 15.2, 20.1 20.1, 25.2 16.2))"
 }
 ```
 
-This API creates an empty pest model (meaning with no rules) in the system. \
 This pest model can then be assigned rules via the POST /rule/ API.
 
 <h3> POST </h3>
 
 ```
-/api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/verbose/
+/api/v1/tool/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/verbose/
+```
+
+
+<h3> Description </h3>
+
+```
+Calculate the risk index values for some pest models and a parcel, within an date interval.
 ```
 
 Path parameters:
-1. weather_dataset_id: the id of the weather dataset that you wish to use for this calculation (uploaded previously via the POST /api/v1/data/upload/ API)
+1. parcel_id: the id of the parcel that you wish to use for this calculation.
 2. model_ids: a list of uuids (uuid-v4) that correspond to the pest_models that you wish to calculate for.
 
 Request body:
@@ -465,11 +511,17 @@ This object holds the "ocsm:hasRiskLevel" key which will have either "Low", "Med
 <h3> POST </h3>
 
 ```
-api/v1/tool/calculate-risk-index/weather/{weather_dataset_id}/model/{model_ids}/high/
+api/v1/tool/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/high/
+```
+
+<h3> Description </h3>
+
+```
+Same as the above api, except this one shows only high risk index values.
 ```
 
 Path parameters:
-1. weather_dataset_id: the id of the weather dataset that you wish to use for this calculation (uploaded previously via the POST /api/v1/data/upload/ API)
+1. parcel_id: the id of the parcel that you wish to use for this calculation.
 2. model_ids: a list of uuids (uuid-v4) that correspond to the pest_models that you wish to calculate for.
 
 Request body:
@@ -540,13 +592,16 @@ Response example:
 }
 ```
 
-Note: \
-This API functions the same as the .../verbose one, while additionally filtering out any risk calculations that aren't "High".
-
 <h3> GET </h3>
 
 ```
 /api/v1/rule/
+```
+
+<h3> Description </h3>
+
+```
+Returns a list of rules that are present in the system.
 ```
 
 Request body:
@@ -627,6 +682,12 @@ Where:
 
 ```
 /api/v1/rule/
+```
+
+<h3> Description </h3>
+
+```
+Create a rule for some pest model.
 ```
 
 Request body:
