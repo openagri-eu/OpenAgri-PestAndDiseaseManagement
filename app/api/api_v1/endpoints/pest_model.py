@@ -144,7 +144,7 @@ def upload_pest_model(
 
             # parse precipitation
             if row[3].find("Continuous"):
-                # skip this one since it's unuseable for now
+                # skip this one since it's unusable for now
                 pass
             else:
                 if row[3].find("-"):
