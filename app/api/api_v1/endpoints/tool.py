@@ -109,8 +109,7 @@ def calculate_risk_index_high(
     return calculations
 
 
-@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/",
-            response_model=GDDResponse)
+@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/")
 def calculate_gdd(
     from_date: datetime.date,
     to_date: datetime.date,
@@ -118,7 +117,7 @@ def calculate_gdd(
     model_ids: DatasetIds = Depends(list_path_param),
     db: Session = Depends(deps.get_db),
     user: User = Depends(deps.get_current_user)
-) -> GDDResponse:
+):
     """
     Calculates and returns GDD for pest in parcel and date interval
     """
@@ -148,7 +147,7 @@ def calculate_gdd(
 
         disease_models_db.append(disease_model_db)
 
-    response_values = utils.calculate_gdd(db=db, parcel=parcel_db,
+    response = utils.calculate_gdd(db=db, parcel=parcel_db,
                                           disease_models=disease_models_db, start=from_date, end=to_date)
 
-    return GDDResponse(models=response_values)
+    return response

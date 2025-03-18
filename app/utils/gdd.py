@@ -9,36 +9,42 @@ import crud
 from models import Parcel, Disease
 from schemas import DiseaseModel, GDDResponseChunk
 
+from uuid import uuid4
+
+from utils import context
+
 
 def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
-                  start: datetime.date, end: datetime.date) -> List[DiseaseModel]:
-
+                  start: datetime.date, end: datetime.date):
     # SQL query for the data
     data_db = crud.data.get_data_query_by_parcel_id_and_date_interval(db=db, parcel_id=parcel.id,
                                                                       date_from=start, date_to=end)
 
     df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
 
-
     df['datetime'] = pd.to_datetime(df['date'].astype(str) + ' ' + df['time'].astype(str))
 
-    #swap cols
+    # swap cols
     cols = df.columns.tolist()
     cols = cols[-1:] + cols[:-1]
     df = df[cols]
 
     df = df.drop(["date", "time", "id"], axis=1)
-    df = df.drop(["atmospheric_temperature_daily_min", "atmospheric_temperature_daily_max", "atmospheric_temperature_daily_average",
-                  "atmospheric_relative_humidity", "atmospheric_pressure", "precipitation", "average_wind_speed", "wind_direction",
-                  "wind_gust", "leaf_relative_humidity", "leaf_temperature", "leaf_wetness", "soil_temperature_10cm", "soil_temperature_20cm",
-                  "soil_temperature_30cm", "soil_temperature_40cm", "soil_temperature_50cm", "soil_temperature_60cm", "solar_irradiance_copernicus",
+    df = df.drop(["atmospheric_temperature_daily_min", "atmospheric_temperature_daily_max",
+                  "atmospheric_temperature_daily_average",
+                  "atmospheric_relative_humidity", "atmospheric_pressure", "precipitation", "average_wind_speed",
+                  "wind_direction",
+                  "wind_gust", "leaf_relative_humidity", "leaf_temperature", "leaf_wetness", "soil_temperature_10cm",
+                  "soil_temperature_20cm",
+                  "soil_temperature_30cm", "soil_temperature_40cm", "soil_temperature_50cm", "soil_temperature_60cm",
+                  "solar_irradiance_copernicus",
                   "parcel_id"], axis=1)
 
     df = df.resample("1D", on="datetime").mean()
 
     df["atmospheric_temperature"] = df["atmospheric_temperature"].apply(np.ceil)
 
-    disease_model_list = []
+    graph = []
 
     for disease_model in disease_models:
 
@@ -80,6 +86,55 @@ def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
             gdd_values=gdd_values
         )
 
-        disease_model_list.append(response_obj)
+        some_uuid = uuid4()
 
-    return disease_model_list
+        has_member_list = []
+
+        for gdv in gdd_values:
+            has_member_list.append(
+                {
+                    "@id": "urn:openagri:accumulatedGDD1:obs5:{}".format(some_uuid),
+                    "@type": "Observation",
+                    "phenomenonTime": "{}".format(str(gdv.date)),
+                    "hasResult": {
+                        "@id": "urn:openagri:accumulatedGGD1:obs4:result:{}".format(some_uuid),
+                        "@type": "QuantityValue",
+                        "numericValue": "{}".format(gdv.accumulated_gdd),
+                        "unit": "http://qudt.org/vocab/unit/DEG_C"
+                    },
+                    "descriptor": "{}".format(gdv.descriptor)
+                }
+            )
+
+        some_uuid = uuid4()
+
+        graph.append(
+            [
+                {
+                    "@id": "urn:openagri:growingDegreeDaysForPestCalculation:{}".format(some_uuid),
+                    "@type": "ObservationCollection",
+                    "description": "The growing degree days calculation for a specific pest during a year, which is "
+                                   "the cumulative daily average temperature above zero.",
+                    "observedProperty": {
+                        "@id": "urn:openagri:growingDegreeDays:op:{}".format(some_uuid),
+                        "@type": ["ObservableProperty", "Temperature"],
+                    },
+                    "hasFeatureOfInterest": {
+                        "@id": "urn:openagri:agriPest:foi:{}".format(some_uuid),
+                        "@type": ["FeatureOfInterest", "AgriPest"],
+                        "name": "{}".format(disease_model.name),
+                        "description": "{}".format(disease_model.description),
+                        "eppoConcept": "{}".format(disease_model.eppo_code),
+                        "hasBaseGrowingDegree": "{}".format(disease_model.base_gdd)
+                    },
+                    "hasMember": has_member_list
+                }
+            ]
+        )
+
+    final_response = {
+        "@context": context,
+        "@graph": graph
+    }
+
+    return final_response
