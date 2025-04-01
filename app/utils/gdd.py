@@ -86,11 +86,10 @@ def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
             gdd_values=gdd_values
         )
 
-        some_uuid = uuid4()
-
         has_member_list = []
 
         for gdv in gdd_values:
+            some_uuid = uuid4()
             has_member_list.append(
                 {
                     "@id": "urn:openagri:accumulatedGDD1:obs5:{}".format(some_uuid),
