@@ -98,7 +98,7 @@ def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
                     "hasResult": {
                         "@id": "urn:openagri:accumulatedGGD1:obs4:result:{}".format(some_uuid),
                         "@type": "QuantityValue",
-                        "numericValue": "{}".format(gdv.accumulated_gdd),
+                        "hasValue": "{}".format(gdv.accumulated_gdd),
                         "unit": "http://qudt.org/vocab/unit/DEG_C"
                     },
                     "descriptor": "{}".format(gdv.descriptor)
