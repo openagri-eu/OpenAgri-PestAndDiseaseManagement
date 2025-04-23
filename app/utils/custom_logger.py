@@ -2,8 +2,8 @@ import logging
 
 from core import settings
 
-# Set to INFO
-logging.basicConfig(level=logging.INFO)
+# Set to level specified in .env
+logging.basicConfig(level=settings.LOGGING)
 
 def get_logger(api_path_name: str):
     if settings.LOGGING:

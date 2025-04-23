@@ -12,15 +12,13 @@ services:
       start_period: 10s
       retries: 3
       interval: 360s
-  backend:
+  pdm:
     depends_on:
       db:
         condition: service_healthy
     image: ghcr.io/openagri-eu/pest-and-disease-management:latest
     build: .
     command: /code/entrypoint.sh ${SERVICE_PORT}
-    ports:
-      - ${SERVICE_PORT}:${SERVICE_PORT}
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_USER: ${POSTGRES_USER}
