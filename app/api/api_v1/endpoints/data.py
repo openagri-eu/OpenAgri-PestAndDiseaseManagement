@@ -9,6 +9,9 @@ from api import deps
 from models import User
 from schemas import Message, CreateData, ListData
 
+from utils import get_logger
+
+logger = get_logger(api_path_name=__name__)
 router = APIRouter()
 
 @router.get("/", response_model=ListData)

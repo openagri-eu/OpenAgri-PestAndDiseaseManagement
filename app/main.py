@@ -12,6 +12,8 @@ from init.init_gatekeeper import register_apis_to_gatekeeper
 from jobs.background_tasks import get_open_meteo_data
 
 
+import logging
+
 @asynccontextmanager
 async def lifespan(fa: FastAPI):
     init_db()
@@ -21,6 +23,8 @@ async def lifespan(fa: FastAPI):
     scheduler.start()
     yield
     scheduler.shutdown()
+    logging.shutdown()
+
 
 app = FastAPI(
     title="Pest and Disease Management", openapi_url="/api/v1/openapi.json", lifespan=lifespan

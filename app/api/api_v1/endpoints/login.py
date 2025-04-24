@@ -11,7 +11,9 @@ from core.config import settings
 from api import deps
 from crud import user
 from schemas import Token
+from utils import get_logger
 
+logger = get_logger(api_path_name=__name__)
 router = APIRouter()
 
 
@@ -61,5 +63,8 @@ def login_access_token(
             access_token=response.json()["access"],
             token_type="bearer"
         )
+
+    if logger:
+        logger.info("Logged in")
 
     return at
