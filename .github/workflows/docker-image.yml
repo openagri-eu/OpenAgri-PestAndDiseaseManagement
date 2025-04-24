@@ -5,6 +5,16 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_date:
+        description: 'Build Date (YYYY-MM-DD)'
+        required: false
+        default: ${{ github.event.repository.created_at }}
+      build_vcs_ref:
+        description: 'Git Commit SHA'
+        required: false
+        default: ${{ github.sha }}
 
 jobs:
   build-and-push:
