@@ -46,6 +46,3 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:latest
           cache-from: type=local,mode=max,from=/tmp/.buildx-cache
           cache-to: type=local,mode=max,dest=/tmp/.buildx-cache
-#          build-args:
-#            BUILD_DATE: ${{ github.event.inputs.BUILD_DATE }}
-#            BUILD_VCS_REF: ${{ github.sha }}
