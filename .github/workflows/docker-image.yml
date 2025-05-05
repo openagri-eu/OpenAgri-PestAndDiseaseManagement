@@ -29,12 +29,18 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache pip
-        uses: actions/setup-python@v5
+      - name: Cache
+        id: cache-pip
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-python-pip
         with:
-          python-version: '3.12'
-          cache: 'pip'
-      - run: pip install -r requirements.txt
+          path: ~/.cache/pip/
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build${{ env.cache-name }}-
+            ${{ runner.os}}-build-
+            ${{ runner.os}}-
 
       - name: Build and push Docker image
         id: docker_build
