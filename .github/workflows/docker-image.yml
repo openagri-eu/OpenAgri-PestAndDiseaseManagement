@@ -29,32 +29,13 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      #- name: Cache
-      #  id: cache-l
-      #  uses: actions/cache@v4
-      #  env:
-      #    cache-name: cache-layers
-      #  with:
-      #    path: ~/tmp/.buildx-cache
-      #    key: ${{ runner.os }}-buildx-${{ github.sha }}
-      #    restore-keys: |
-      #      ${{ runner.os}}-buildx-
-
       - name: Build and push Docker image
         id: docker_build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/${{ github.ref }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          #cache-from: type=local,src=/tmp/.buildx-cache
-          #cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      # Due to https://github.com/docker/build-push-action/issues/252, needs the following
-
-      #- name: Move cache
-      #  run: |
-      #    rm -rf /tmp/.buildx-cache
-      #    mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          
