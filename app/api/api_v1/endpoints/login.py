@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import requests
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -68,3 +68,5 @@ def login_access_token(
         logger.info("Logged in")
 
     return at
+
+# TODO: Implement logout
