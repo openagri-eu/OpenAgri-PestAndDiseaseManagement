@@ -1,7 +1,7 @@
 # Pest and Disease Management
 
-*"This service was created in the context of OpenAgri project (https://horizon-openagri.eu/). OpenAgri has received funding from the EU’s Horizon Europe research and innovation programme under Grant Agreement no. 101134083."*
-
+*"This service was created in the context of OpenAgri project (https://horizon-openagri.eu/). OpenAgri has received funding from the EU’s Horizon Europe research and innovation programme under Grant Agreement no. 101134083."* \
+![eu_flag](https://flagcdn.com/w80/eu.png)
 # Description
 
 The Pest and Disease Management(P&DM) service supports farmers by providing multiple ways of calculating a risk associated with
