@@ -53,5 +53,5 @@ The basic flow for this service is as follows:
 Please contact the maintainer of this repository.
 
 # License
-This project code is licensed under the EUPL 1.2 license, see the [LICENSE](https://github.com/agstack/pest-and-disease-management/blob/main/LICENSE) file for more details.
+This project code is licensed under the EUPL 1.2 license, see the [LICENSE](https://github.com/agstack/OpenAgri-PestAndDiseaseManagement/blob/main/LICENSE) file for more details.
 Please note that each service may have different licenses, which can be found their specific source code repository.
