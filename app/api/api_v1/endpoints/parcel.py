@@ -11,7 +11,7 @@ from utils import fetch_historical_data_for_parcel
 
 router = APIRouter()
 
-@router.get("/", response_model=Parcels, dependencies=[Depends(deps.get_current_user)])
+@router.get("/", response_model=Parcels, dependencies=[Depends(deps.get_jwt)])
 def get_all_parcels(
         db: Session = Depends(deps.get_db)
 ) -> Parcels:
@@ -23,7 +23,7 @@ def get_all_parcels(
 
     return response_obj
 
-@router.post("/", response_model=Message, dependencies=[Depends(deps.get_current_user)])
+@router.post("/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def upload_parcel_lat_lon(
         parcel_information: CreateParcel,
         db: Session = Depends(deps.get_db)
@@ -42,7 +42,7 @@ def upload_parcel_lat_lon(
 
     return response_object
 
-@router.post("/wkt-format/", response_model=Message, dependencies=[Depends(deps.get_current_user)])
+@router.post("/wkt-format/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def upload_parcel_wkt(
         parcel_information: ParcelWKT,
         db: Session = Depends(deps.get_db)
@@ -75,7 +75,7 @@ def upload_parcel_wkt(
 
     return response_object
 
-@router.delete("/{parcel_id}", response_model=Message, dependencies=[Depends(deps.get_current_user)])
+@router.delete("/{parcel_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def delete_parcel_by_id(
         parcel_id: int,
         db: Session = Depends(deps.get_db)

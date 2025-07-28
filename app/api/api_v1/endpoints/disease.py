@@ -8,7 +8,7 @@ from pydantic import UUID4
 
 router = APIRouter()
 
-@router.get("/", response_model=ListDisease, dependencies=[Depends(deps.get_current_user)])
+@router.get("/", response_model=ListDisease, dependencies=[Depends(deps.get_jwt)])
 def get_all_diseases(
         db: Session = Depends(deps.get_db)
 ) -> ListDisease:
@@ -20,7 +20,7 @@ def get_all_diseases(
 
     return ListDisease(diseases=response)
 
-@router.post("/", response_model=DiseaseDB, dependencies=[Depends(deps.get_current_user)])
+@router.post("/", response_model=DiseaseDB, dependencies=[Depends(deps.get_jwt)])
 def create_disease(
         input_obj: InputDisease,
         db: Session = Depends(deps.get_db)
@@ -58,7 +58,7 @@ def create_disease(
     return disease_db
 
 
-@router.get("/{disease_name}", response_model=DiseaseDB, dependencies=[Depends(deps.get_current_user)])
+@router.get("/{disease_name}", response_model=DiseaseDB, dependencies=[Depends(deps.get_jwt)])
 def get_by_name(
         disease_name: str,
         db: Session = Depends(deps.get_db)
@@ -77,7 +77,7 @@ def get_by_name(
 
     return disease_db
 
-@router.delete("/{disease_id}", response_model=Message, dependencies=[Depends(deps.get_current_user)])
+@router.delete("/{disease_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def remove_disease(
         disease_id: UUID4,
         db: Session = Depends(deps.get_db)

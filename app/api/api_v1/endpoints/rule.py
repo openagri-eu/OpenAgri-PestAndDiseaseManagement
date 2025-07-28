@@ -9,7 +9,7 @@ from schemas import Message, RulesDB, RuleDB, CreateRuleWithConditions, CreateCo
 router = APIRouter()
 
 
-@router.post("/", response_model=RuleDB, dependencies=[Depends(deps.get_current_user)])
+@router.post("/", response_model=RuleDB, dependencies=[Depends(deps.get_jwt)])
 def create_rule(
         rule: CreateRuleWithConditions,
         db: Session = Depends(deps.get_db)
@@ -87,7 +87,7 @@ def create_rule(
 
 
 
-@router.get("/", response_model=RulesDB, dependencies=[Depends(deps.get_current_user)])
+@router.get("/", response_model=RulesDB, dependencies=[Depends(deps.get_jwt)])
 def get_all_rules(
         db: Session = Depends(deps.get_db)
 ) -> RulesDB:
@@ -100,7 +100,7 @@ def get_all_rules(
     return RulesDB(rules=rules_db)
 
 
-@router.delete("/{rule_id}", response_model=Message, dependencies=[Depends(deps.get_current_user)])
+@router.delete("/{rule_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def delete_rule(
         rule_id: int,
         db: Session = Depends(deps.get_db)

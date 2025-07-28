@@ -14,7 +14,7 @@ import crud
 router = APIRouter()
 
 
-@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_current_user)])
+@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_jwt)])
 def calculate_risk_index_verbose(
     from_date: datetime.date,
     to_date: datetime.date,
@@ -59,7 +59,7 @@ def calculate_risk_index_verbose(
 
     return calculations
 
-@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/high/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_current_user)])
+@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/high/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_jwt)])
 def calculate_risk_index_high(
     from_date: datetime.date,
     to_date: datetime.date,
@@ -107,7 +107,7 @@ def calculate_risk_index_high(
     return calculations
 
 
-@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_current_user)])
+@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_jwt)])
 def calculate_gdd(
     from_date: datetime.date,
     to_date: datetime.date,

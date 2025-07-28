@@ -10,7 +10,7 @@ from crud import unit
 router = APIRouter()
 
 
-@router.post("/", response_model=Message, dependencies=[Depends(deps.get_current_user)])
+@router.post("/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def create_unit(
         unit_in: UnitCreate,
         db: Session = Depends(deps.get_db)
@@ -32,7 +32,7 @@ def create_unit(
     return Message(message="Successfully created!")
 
 
-@router.get("/", response_model=Units, dependencies=[Depends(deps.get_current_user)])
+@router.get("/", response_model=Units, dependencies=[Depends(deps.get_jwt)])
 def get_units(
         db: Session = Depends(deps.get_db)
 ):
@@ -45,7 +45,7 @@ def get_units(
     return Units(units=units_db)
 
 
-@router.delete("/", dependencies=[Depends(deps.get_current_user)])
+@router.delete("/", dependencies=[Depends(deps.get_jwt)])
 def delete_unit(
         unit_id: UnitDelete,
         db: Session = Depends(deps.get_db)

@@ -7,7 +7,7 @@ from schemas import Operators
 
 router = APIRouter()
 
-@router.get("/", response_model=Operators, dependencies=[Depends(deps.get_current_user)])
+@router.get("/", response_model=Operators, dependencies=[Depends(deps.get_jwt)])
 def get_all_operators(
         db: Session = Depends(deps.get_db)
 ) -> Operators:
