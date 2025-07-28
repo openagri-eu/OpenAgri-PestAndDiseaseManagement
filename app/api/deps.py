@@ -10,7 +10,6 @@ from crud import user
 
 from core.config import settings
 from db.session import SessionLocal
-from schemas import Token
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token/")
 
@@ -24,7 +23,7 @@ def get_db() -> Generator:
 
 
 def get_jwt(
-        token: Token = Depends(reusable_oauth2)
+        token: str = Depends(reusable_oauth2)
 ):
     if not token:
         raise HTTPException(
@@ -35,13 +34,13 @@ def get_jwt(
     return token
 
 
-# Only use when you're expecting an AT that came from PDM, not GK
+# Only use when you're expecting a token that came from PDM, not GK
 def get_current_user(
-        token: Token = Depends(get_jwt),
+        token: str = Depends(get_jwt),
         db: Session = Depends(get_db)
 ) -> User:
 
-    user_id = decode_token(token.access_token)
+    user_id = decode_token(token)
 
     user_db = user.get(db=db, id=user_id)
 
