@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 import utils
 from api import deps
 from models import User
-from schemas import list_path_param, DatasetIds, GDDResponse
+from schemas import list_path_param, DatasetIds
 
 import crud
 
@@ -14,14 +14,13 @@ import crud
 router = APIRouter()
 
 
-@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/")
+@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_jwt)])
 def calculate_risk_index_verbose(
     from_date: datetime.date,
     to_date: datetime.date,
     parcel_id: int,
     model_ids: DatasetIds = Depends(list_path_param),
-    db: Session = Depends(deps.get_db),
-    user: User = Depends(deps.get_current_user)
+    db: Session = Depends(deps.get_db)
 ):
     """
     Calculates the risk index for some parcel x, a period of time (i.e. 2025-01-01 -> 2025-01-31) and a pest model.
@@ -60,14 +59,13 @@ def calculate_risk_index_verbose(
 
     return calculations
 
-@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/high/{from_date}/from/{to_date}/to/")
+@router.get("/calculate-risk-index/weather/{parcel_id}/model/{model_ids}/high/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_jwt)])
 def calculate_risk_index_high(
     from_date: datetime.date,
     to_date: datetime.date,
     parcel_id: int,
     model_ids: DatasetIds = Depends(list_path_param),
-    db: Session = Depends(deps.get_db),
-    user: User = Depends(deps.get_current_user)
+    db: Session = Depends(deps.get_db)
 ):
     """
     Calculates the risk index for some parcel x, a period of time (i.e. 2025-01-01 -> 2025-01-31) and a pest model.
@@ -109,14 +107,13 @@ def calculate_risk_index_high(
     return calculations
 
 
-@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/")
+@router.get("/calculate-gdd/parcel/{parcel_id}/model/{model_ids}/verbose/{from_date}/from/{to_date}/to/", dependencies=[Depends(deps.get_jwt)])
 def calculate_gdd(
     from_date: datetime.date,
     to_date: datetime.date,
     parcel_id: int,
     model_ids: DatasetIds = Depends(list_path_param),
-    db: Session = Depends(deps.get_db),
-    user: User = Depends(deps.get_current_user)
+    db: Session = Depends(deps.get_db)
 ):
     """
     Calculates and returns GDD for pest in parcel and date interval
