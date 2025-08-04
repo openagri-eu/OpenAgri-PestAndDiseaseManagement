@@ -10,7 +10,7 @@ def gatekeeper_logout(
 ):
     try:
         response = requests.post(
-            url=str(settings.GATEKEEPER_BASE_URL) + "api/logout/",
+            url=str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/logout/",
             headers={"Content-Type": "application/json"},
             json={
                 "refresh": "{}".format(refresh_token)
@@ -40,7 +40,7 @@ def check_token_for_validity(
 ):
     try:
         response = requests.post(
-            url=str(settings.GATEKEEPER_BASE_URL) + "api/validate_token/",
+            url=str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/validate_token/",
             headers={"Content-Type": "application/json"},
             json={
                 "token": token,

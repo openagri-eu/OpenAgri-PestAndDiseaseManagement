@@ -35,7 +35,7 @@ def register(
     if settings.USING_GATEKEEPER:
         try:
             response = requests.post(
-                url=str(settings.GATEKEEPER_BASE_URL) + "api/register/",
+                url=str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/register/",
                 headers={"Content-Type": "application/json"},
                 json={"username": user_information.email,
                       "email": user_information.email, "password": user_information.password}
