@@ -1,0 +1,50 @@
+import datetime
+
+import requests
+from fastapi import HTTPException
+from requests import RequestException
+
+from core import settings
+from enum import Enum
+
+class TimeUnit(Enum):
+    HOURLY = "hourly",
+    DAILY = "daily"
+
+
+def fetch_weather_data(
+        latitude: float,
+        longitude: float,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        variables: list,
+        access_token: str,
+        radius_km: int = 10,
+        how_often: TimeUnit = TimeUnit.DAILY
+):
+    try:
+        response = requests.get(
+            url=str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/proxy/weather_data/api/v1/history/{}".format(how_often),
+            headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(access_token)},
+            json={
+                "lat": latitude,
+                "lon": longitude,
+                "start": start_date,
+                "end": end_date,
+                "variables": variables,
+                "radius_km": radius_km
+            }
+        )
+    except RequestException:
+        raise HTTPException(
+            status_code=400,
+            detail="Error during proxy call via gk"
+        )
+
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400,
+            detail="Error during weather data api call, original error: {}".format(response.reason)
+        )
+
+    return response.json()
