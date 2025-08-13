@@ -137,3 +137,98 @@ def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
     }
 
     return final_response
+
+
+def calculate_gdd_wd(
+        disease_models: List[Disease],
+        weather_data: dict
+):
+    graph = []
+
+    for disease_model in disease_models:
+        gdd_values = []
+        accumulated_gdd = 0
+
+        for day in weather_data["data"]:
+
+            print("IN FOR")
+            print(day)
+            print(type(day))
+
+            date = day["date"]
+            avg_daily_temp = int(day["values"]["temperature_2m_max"])
+
+            gdd_to_add = 0
+
+            if avg_daily_temp > disease_model.base_gdd:
+                gdd_to_add = avg_daily_temp - disease_model.base_gdd
+
+            accumulated_gdd += gdd_to_add
+
+            descriptor = "No defined descriptor for this amount of gdd"
+            for interval in disease_model.gdd_points:
+                if accumulated_gdd not in range(interval.start, interval.end):
+                    continue
+
+                descriptor = interval.descriptor
+
+            gdd_values.append(
+                GDDResponseChunk(
+                    date=date,
+                    gdd_value=int(gdd_to_add),
+                    accumulated_gdd=int(accumulated_gdd),
+                    descriptor=descriptor
+                )
+            )
+
+        has_member_list = []
+
+        for gdv in gdd_values:
+            some_uuid = uuid4()
+            has_member_list.append(
+                {
+                    "@id": "urn:openagri:accumulatedGDD1:obs5:{}".format(some_uuid),
+                    "@type": "Observation",
+                    "phenomenonTime": "{}".format(str(gdv.date)),
+                    "hasResult": {
+                        "@id": "urn:openagri:accumulatedGGD1:obs4:result:{}".format(some_uuid),
+                        "@type": "QuantityValue",
+                        "hasValue": "{}".format(gdv.accumulated_gdd),
+                        "unit": "http://qudt.org/vocab/unit/DEG_C"
+                    },
+                    "descriptor": "{}".format(gdv.descriptor)
+                }
+            )
+
+        some_uuid = uuid4()
+
+        graph.append(
+            [
+                {
+                    "@id": "urn:openagri:growingDegreeDaysForPestCalculation:{}".format(some_uuid),
+                    "@type": "ObservationCollection",
+                    "description": "The growing degree days calculation for a specific pest during a year, which is "
+                                   "the cumulative daily average temperature above zero.",
+                    "observedProperty": {
+                        "@id": "urn:openagri:growingDegreeDays:op:{}".format(some_uuid),
+                        "@type": ["ObservableProperty", "Temperature"],
+                    },
+                    "hasFeatureOfInterest": {
+                        "@id": "urn:openagri:agriPest:foi:{}".format(some_uuid),
+                        "@type": ["FeatureOfInterest", "AgriPest"],
+                        "name": "{}".format(disease_model.name),
+                        "description": "{}".format(disease_model.description),
+                        "eppoConcept": "{}".format(disease_model.eppo_code),
+                        "hasBaseGrowingDegree": "{}".format(disease_model.base_gdd)
+                    },
+                    "hasMember": has_member_list
+                }
+            ]
+        )
+
+    final_response = {
+        "@context": context,
+        "@graph": graph
+    }
+
+    return final_response
