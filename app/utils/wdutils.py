@@ -7,6 +7,8 @@ from requests import RequestException
 from core import settings
 from enum import Enum
 
+WEATHER_DATA_API_CALL_URL = str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/proxy/weather_data"
+
 class TimeUnit(Enum):
     HOURLY = "hourly",
     DAILY = "daily"
@@ -24,13 +26,13 @@ def fetch_weather_data(
 ):
     try:
         response = requests.get(
-            url=str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/proxy/weather_data/api/v1/history/{}".format(how_often),
+            url=WEATHER_DATA_API_CALL_URL + "/api/v1/history/{}".format(how_often),
             headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(access_token)},
             json={
                 "lat": latitude,
                 "lon": longitude,
-                "start": start_date,
-                "end": end_date,
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat(),
                 "variables": variables,
                 "radius_km": radius_km
             }
