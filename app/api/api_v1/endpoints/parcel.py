@@ -75,7 +75,7 @@ def upload_parcel_wkt(
 
     return response_object
 
-@router.delete("/{parcel_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
+@router.delete("/{parcel_id}/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def delete_parcel_by_id(
         parcel_id: int,
         db: Session = Depends(deps.get_db)

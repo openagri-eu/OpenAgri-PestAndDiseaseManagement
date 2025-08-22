@@ -58,7 +58,7 @@ def create_disease(
     return disease_db
 
 
-@router.get("/{disease_name}", response_model=DiseaseDB, dependencies=[Depends(deps.get_jwt)])
+@router.get("/{disease_name}/", response_model=DiseaseDB, dependencies=[Depends(deps.get_jwt)])
 def get_by_name(
         disease_name: str,
         db: Session = Depends(deps.get_db)
@@ -77,7 +77,7 @@ def get_by_name(
 
     return disease_db
 
-@router.delete("/{disease_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
+@router.delete("/{disease_id}/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def remove_disease(
         disease_id: UUID4,
         db: Session = Depends(deps.get_db)

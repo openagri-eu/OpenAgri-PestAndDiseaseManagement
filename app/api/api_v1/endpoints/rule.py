@@ -100,7 +100,7 @@ def get_all_rules(
     return RulesDB(rules=rules_db)
 
 
-@router.delete("/{rule_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
+@router.delete("/{rule_id}/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def delete_rule(
         rule_id: int,
         db: Session = Depends(deps.get_db)

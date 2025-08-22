@@ -28,7 +28,7 @@ def get_all_data(
     return ListData(list_of_data=response_object)
 
 
-@router.get("/parcel/{parcel_id}/from/{start}/to/{end}", response_model=ListData, dependencies=[Depends(deps.get_jwt)])
+@router.get("/parcel/{parcel_id}/from/{start}/to/{end}/", response_model=ListData, dependencies=[Depends(deps.get_jwt)])
 def get_data_for_parcel(
         parcel_id: int,
         start: datetime.date,
@@ -46,7 +46,7 @@ def get_data_for_parcel(
     return ListData(list_of_data=response_object)
 
 
-@router.post("/{parcel_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
+@router.post("/{parcel_id}/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def upload_weather_data_for_parcel(
         parcel_id: int,
         data: List[CreateData],
@@ -88,7 +88,7 @@ def upload_weather_data_for_parcel(
     return response_object
 
 
-@router.delete("/{data_id}", response_model=Message, dependencies=[Depends(deps.get_jwt)])
+@router.delete("/{data_id}/", response_model=Message, dependencies=[Depends(deps.get_jwt)])
 def remove_data_point(
         data_id: int,
         db: Session = Depends(deps.get_db)
