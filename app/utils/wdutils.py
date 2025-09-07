@@ -60,4 +60,10 @@ def fetch_weather_data(
             detail="Error during weather data api call, original error: {}".format(response.reason)
         )
 
+    if response.status_code == 404:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, GK returning 404, Weather Data API missing."
+        )
+
     return response.json()
