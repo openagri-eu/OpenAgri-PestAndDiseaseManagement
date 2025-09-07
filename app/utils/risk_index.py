@@ -138,8 +138,7 @@ def calculate_risk_index_probability_wd(
 
                 current_rule_applies = True
                 for cond in rule.conditions:
-                    condition_applies = eval(f"{hour["values"][openmeteo_friendly_variables[cond.unit.name]]} {cond.operator.symbol} {cond.value}")
-
+                    condition_applies = eval("{} {} {}".format(hour["values"][openmeteo_friendly_variables[cond.unit.name]], cond.operator.symbol, cond.value))
                     if not condition_applies:
                         current_rule_applies = False
                         break
