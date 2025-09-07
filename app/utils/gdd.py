@@ -151,10 +151,6 @@ def calculate_gdd_wd(
 
         for day in weather_data["data"]:
 
-            print("IN FOR")
-            print(day)
-            print(type(day))
-
             date = day["date"]
             avg_daily_temp = int(day["values"]["temperature_2m_max"])
 

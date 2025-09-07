@@ -10,9 +10,20 @@ from enum import Enum
 WEATHER_DATA_API_CALL_URL = str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/proxy/weather_data"
 
 class TimeUnit(Enum):
-    HOURLY = "hourly",
+    HOURLY = "hourly"
     DAILY = "daily"
 
+openmeteo_friendly_variables = {
+    "atmospheric_temperature": "temperature_2m",
+    "atmospheric_relative_humidity" : "relative_humidity_2m",
+    "precipitation": "precipitation",
+    "atmospheric_pressure": "surface_pressure",
+    "average_wind_speed": "wind_speed_10m",
+    "soil_temperature_10cm": "soil_temperature_0_to_7cm",
+    "soil_temperature_20cm": "soil_temperature_7_to_28cm",
+    "soil_temperature_30cm": "soil_temperature_28_to_100cm",
+    "soil_temperature_40cm": "soil_temperature_100_to_255cm"
+}
 
 def fetch_weather_data(
         latitude: float,
@@ -23,10 +34,10 @@ def fetch_weather_data(
         access_token: str,
         radius_km: int = 10,
         how_often: TimeUnit = TimeUnit.DAILY
-):
+) -> dict:
     try:
-        response = requests.get(
-            url=WEATHER_DATA_API_CALL_URL + "/api/v1/history/{}".format(how_often),
+        response = requests.post(
+            url=WEATHER_DATA_API_CALL_URL + "/api/v1/history/{}/".format(how_often.value),
             headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(access_token)},
             json={
                 "lat": latitude,
