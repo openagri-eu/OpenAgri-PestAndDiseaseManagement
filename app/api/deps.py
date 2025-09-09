@@ -10,7 +10,6 @@ from crud import user
 
 from core.config import settings
 from db.session import SessionLocal
-from schemas import RefreshToken
 from utils import check_token_for_validity
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/login/access-token/")
@@ -53,9 +52,9 @@ def get_jwt(
     return token
 
 def get_refresh_token(
-        refresh_token_schema: RefreshToken
-) -> str:
-    if not refresh_token_schema.refresh_token:
+        refresh_token: str = None
+):
+    if not refresh_token:
         raise HTTPException(
             status_code=401,
             detail="Not authenticated"
@@ -63,13 +62,13 @@ def get_refresh_token(
 
     # If you're using the gatekeeper, check whether the token in question is real
     if settings.USING_GATEKEEPER:
-        if not check_token_for_validity(token=refresh_token_schema.refresh_token, token_type="refresh"):
+        if not check_token_for_validity(token=refresh_token, token_type="refresh"):
             raise HTTPException(
                 status_code=400,
                 detail="Error, invalid token"
             )
 
-    return refresh_token_schema.refresh_token
+    return refresh_token
 
 
 # Only use when you're expecting a token that came from PDM, not GK

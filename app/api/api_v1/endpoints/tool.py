@@ -5,11 +5,9 @@ from sqlalchemy.orm import Session
 
 import utils
 from api import deps
-from models import User
 from schemas import list_path_param, DatasetIds
 
 import crud
-
 
 router = APIRouter()
 
@@ -148,3 +146,4 @@ def calculate_gdd(
                                           disease_models=disease_models_db, start=from_date, end=to_date)
 
     return response
+
