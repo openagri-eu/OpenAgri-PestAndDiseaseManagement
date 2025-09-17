@@ -33,12 +33,24 @@ def fetch_parcel_lat_lon(
         parcel: dict
 ):
 
-    # First check if the pair (lat,lon) exists, we can use these if they do
-    if parcel["location"]["lat"] and parcel["location"]["lon"]:
-        return parcel["location"]["lat"], parcel["location"]["lon"]
+    # First check if the pair (lat,long) exists, we can use these if they do
+    try:
+        if parcel["location"]["lat"] and parcel["location"]["long"]:
+            return parcel["location"]["lat"], parcel["location"]["long"]
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error, unexpected response from FC, original error: {e}"
+        )
 
-    # if (lat,lon) is set to (None,None) then calculate the centroid from the WKT object and use that as
-    wkt_polygon = parcel["hasGeometry"]["asWKT"]
+    # if (lat,long) is set to (None,None) then calculate the centroid from the WKT object and use that as
+    try:
+        wkt_polygon = parcel["hasGeometry"]["asWKT"]
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error, missing location information for parcel, original error: {e}"
+        )
 
     # Parse the POLYGON(...) object
     try:
