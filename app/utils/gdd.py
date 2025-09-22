@@ -152,6 +152,9 @@ def calculate_gdd_wd(
         for day in weather_data["data"]:
 
             date = day["date"]
+            if not day["values"]["temperature_2m_max"]:
+                break
+
             avg_daily_temp = int(day["values"]["temperature_2m_max"])
 
             gdd_to_add = 0

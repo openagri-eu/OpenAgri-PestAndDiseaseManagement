@@ -36,6 +36,12 @@ def calculate_gdd_fc(
             detail="from_date must be later than to_date, from_date: {} | to_date: {}".format(from_date, to_date)
         )
 
+    if to_date >= datetime.date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="to_date must be earlier than today's date, to_date:{}".format(to_date)
+        )
+
     parcel_fc = fetch_parcel_by_id(access_token=access_token, parcel_id=parcel_id)
 
     if not parcel_fc:
