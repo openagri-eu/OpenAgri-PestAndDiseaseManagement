@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 
 import crud
 from api import deps
-from schemas import ListDisease, InputDisease, DiseaseDB, Message, CreateDisease
+from schemas import ListDisease, InputDisease, DiseaseDB, Message, CreateDisease, UpdateDiseaseModel
 from pydantic import UUID4
+
+from http import HTTPStatus
 
 router = APIRouter()
 
@@ -99,3 +101,27 @@ def remove_disease(
     response_obj = Message(message="Successfully removed disease with ID {}".format(disease_id))
 
     return response_obj
+
+@router.patch("/{disease_id}/", status_code=HTTPStatus.NO_CONTENT, dependencies=[Depends(deps.get_jwt)])
+def patch_disease(
+        disease_id: UUID4,
+        disease_model: UpdateDiseaseModel,
+        db: Session = Depends(deps.get_db)
+):
+    """
+    Patch an existing disease by passing values that should be updated
+    """
+
+    disease_db = crud.disease.get(db=db, id=disease_id)
+
+    if not disease_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, cannot update disease model that doesn't exist."
+        )
+
+    disease_unpacked = disease_model.model_dump(exclude_unset=True)
+
+    _ = crud.disease.update(db=db, db_obj=disease_db, obj_in=disease_unpacked)
+
+    return

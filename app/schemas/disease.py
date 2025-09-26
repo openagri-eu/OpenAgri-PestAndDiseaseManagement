@@ -65,5 +65,13 @@ class DiseaseModel(BaseModel):
     gdd_values: List[GDDResponseChunk]
 
 
+class UpdateDiseaseModel(BaseModel):
+    name: str | None = None
+    eppo_code: str | None = None
+    base_gdd: int | None = None
+    description: str | None = None
+    gdd_values: List[GDDResponseChunk] | None = None
+
+
 class GDDResponse(BaseModel):
     models: List[DiseaseModel]
