@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 import crud
 from models import Parcel, Disease
-from schemas import DiseaseModel, GDDResponseChunk
+from schemas import GDDResponseChunk, GDDResponse, DiseaseModel
 
 from uuid import uuid4
 
@@ -77,14 +77,6 @@ def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
                     descriptor=descriptor
                 )
             )
-
-        response_obj = DiseaseModel(
-            name=disease_model.name,
-            eppo_code=disease_model.eppo_code,
-            base_gdd=disease_model.base_gdd,
-            description=disease_model.description,
-            gdd_values=gdd_values
-        )
 
         has_member_list = []
 
@@ -231,3 +223,56 @@ def calculate_gdd_wd(
     }
 
     return final_response
+
+def calculate_base(
+        disease_models: List[Disease],
+        weather_data: dict
+):
+    response_value = []
+
+    for disease_model in disease_models:
+        gdd_values = []
+        accumulated_gdd = 0
+
+        for day in weather_data["data"]:
+
+            date = day["date"]
+            if not day["values"]["temperature_2m_max"]:
+                break
+
+            avg_daily_temp = int(day["values"]["temperature_2m_max"])
+
+            gdd_to_add = 0
+
+            if avg_daily_temp > disease_model.base_gdd:
+                gdd_to_add = avg_daily_temp - disease_model.base_gdd
+
+            accumulated_gdd += gdd_to_add
+
+            descriptor = "No defined descriptor for this amount of gdd"
+            for interval in disease_model.gdd_points:
+                if accumulated_gdd not in range(interval.start, interval.end):
+                    continue
+
+                descriptor = interval.descriptor
+
+            gdd_values.append(
+                GDDResponseChunk(
+                    date=date,
+                    gdd_value=int(gdd_to_add),
+                    accumulated_gdd=int(accumulated_gdd),
+                    descriptor=descriptor
+                )
+            )
+
+        response_value.append(
+            DiseaseModel(
+                name=disease_model.name,
+                eppo_code=disease_model.eppo_code,
+                base_gdd=disease_model.base_gdd,
+                description=disease_model.description,
+                gdd_values=gdd_values
+            )
+        )
+
+    return GDDResponse(models=response_value)

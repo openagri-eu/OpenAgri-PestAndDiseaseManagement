@@ -10,7 +10,7 @@ import datetime
 
 from schemas import DatasetIds, list_path_param
 from utils import fetch_parcel_by_id, fetch_parcel_lat_lon, fetch_weather_data, calculate_gdd_wd, \
-    openmeteo_friendly_variables, TimeUnit, calculate_risk_index_probability_wd
+    openmeteo_friendly_variables, TimeUnit, calculate_risk_index_probability_wd, calculate_base
 
 from http import HTTPStatus
 
@@ -23,8 +23,8 @@ def calculate_gdd_fc(
         to_date: datetime.date,
         access_token: str = Depends(deps.get_jwt),
         model_ids: DatasetIds = Depends(list_path_param),
-        db: Session = Depends(deps.get_db)
-
+        db: Session = Depends(deps.get_db),
+        formatting: Literal["JSON", "JSON-LD"] = "JSON-LD"
 ):
     """
     Calculates and returns GDD values (uses resources located on fc)
@@ -74,12 +74,18 @@ def calculate_gdd_fc(
 
         disease_models_db.append(disease_model_db)
 
-    calculation_results = calculate_gdd_wd(
-        disease_models=disease_models_db,
-        weather_data=weather_data
-    )
+    if formatting.lower() == "json-ld":
+        response = calculate_gdd_wd(
+            disease_models=disease_models_db,
+            weather_data=weather_data
+        )
+    else:
+        response = calculate_base(
+            disease_models=disease_models_db,
+            weather_data=weather_data
+        )
 
-    return calculation_results
+    return response
 
 @router.get("/{model_ids}/risk-index/", dependencies=[Depends(deps.is_using_gatekeeper)])
 def calculate_risk_index_fc(
