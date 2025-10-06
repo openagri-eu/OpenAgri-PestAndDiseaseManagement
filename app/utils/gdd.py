@@ -3,7 +3,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from pandas import RangeIndex
 from sqlalchemy.orm import Session
 
 import crud
