@@ -145,5 +145,11 @@ def calculate_gdd(
     response = utils.calculate_gdd(db=db, parcel=parcel_db,
                                           disease_models=disease_models_db, start=from_date, end=to_date)
 
+    if not response:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error, no existing data for provided date interval: from:{from_date.isoformat()} to:{to_date.isoformat()}"
+        )
+
     return response
 

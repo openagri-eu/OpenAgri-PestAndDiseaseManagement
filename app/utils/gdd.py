@@ -12,7 +12,9 @@ from schemas import GDDResponseChunk, GDDResponse, DiseaseModel
 from uuid import uuid4
 
 from utils import context
+from .custom_logger import get_logger
 
+logger = get_logger(api_path_name=__name__)
 
 def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
                   start: datetime.date, end: datetime.date):
@@ -40,7 +42,11 @@ def calculate_gdd(db: Session, parcel: Parcel, disease_models: List[Disease],
                   "solar_irradiance_copernicus",
                   "parcel_id"], axis=1)
 
-    df = df.resample("1D", on="datetime").mean()
+    try:
+        df = df.resample("1D", on="datetime").mean()
+    except AttributeError as ae:
+        logger.warning(ae)
+        return None
 
     df["atmospheric_temperature"] = df["atmospheric_temperature"].apply(np.ceil)
 
