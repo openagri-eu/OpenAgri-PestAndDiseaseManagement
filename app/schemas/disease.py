@@ -65,12 +65,18 @@ class DiseaseModel(BaseModel):
     gdd_values: List[GDDResponseChunk]
 
 
+class UpdateGDDInterval(BaseModel):
+    start: int
+    end: int
+    descriptor: str
+
+
 class UpdateDiseaseModel(BaseModel):
     name: str | None = None
     eppo_code: str | None = None
     base_gdd: int | None = None
     description: str | None = None
-    gdd_values: List[GDDResponseChunk] | None = None
+    gdd_points: List[UpdateGDDInterval] | None = None
 
 
 class GDDResponse(BaseModel):
