@@ -62,6 +62,7 @@ class DiseaseModel(BaseModel):
     eppo_code: str
     base_gdd: int
     description: Optional[str]
+    gdd_points: List[GDDIntervalDB]
     gdd_values: List[GDDResponseChunk]
 
 

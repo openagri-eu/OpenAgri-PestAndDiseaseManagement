@@ -277,6 +277,7 @@ def calculate_base(
                 eppo_code=disease_model.eppo_code,
                 base_gdd=disease_model.base_gdd,
                 description=disease_model.description,
+                gdd_points=disease_model.gdd_points,
                 gdd_values=gdd_values
             )
         )
