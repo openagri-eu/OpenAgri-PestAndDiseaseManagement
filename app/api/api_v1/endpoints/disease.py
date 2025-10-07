@@ -122,6 +122,6 @@ def patch_disease(
 
     disease_unpacked = disease_model.model_dump(exclude_unset=True)
 
-    _ = crud.disease.update(db=db, db_obj=disease_db, obj_in=disease_unpacked)
+    _ = crud.disease.update_with_gdd_points_overwrite(db=db, db_obj=disease_db, obj_in=disease_unpacked)
 
     return
