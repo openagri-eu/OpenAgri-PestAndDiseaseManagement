@@ -9,8 +9,6 @@ from os import path, environ
 class Settings(BaseSettings):
     CORS_ORIGINS: List[AnyHttpUrl] | List[str] = None
 
-    PROJECT_ROOT: str = path.dirname(path.dirname(path.realpath(__file__)))
-
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
