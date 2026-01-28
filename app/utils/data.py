@@ -14,7 +14,6 @@ from schemas import NewCreateData
 
 def fetch_historical_data_for_parcel(db: Session, parcel: Parcel):
 
-
     # Set up the Open-Meteo API client with cache and retry on error
     cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
@@ -87,6 +86,55 @@ def fetch_historical_data_for_parcel(db: Session, parcel: Parcel):
         parcel_id=parcel.id
     )
 
-
     openmeteo.session.close()
     return
+
+
+# Param values like past_days and forecast_days should be checked before calling this function
+# Besides fetching the forecast data, this function also converts it into a pandas dataframe
+def fetch_forecast_data_for_parcel(
+    latitude: float,
+    longitude: float,
+    hourly_fields: list,
+    past_days: int,
+    forecast_days: int,
+):
+    cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
+    retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+    openmeteo = openmeteo_requests.Client(session=retry_session)
+
+    url = "https://api.open-meteo.com/v1/forecast"
+
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": hourly_fields,
+        "past_days": past_days,
+        "forecast_days": forecast_days,
+    }
+
+    responses = openmeteo.weather_api(url, params=params)
+    response = responses[0]
+    hourly = response.Hourly()
+
+    data_dict = {}
+    field_count = 0
+    for field in hourly_fields:
+        data_dict[field] = hourly.Variables(field_count).ValuesAsNumpy()
+        field_count += 1
+
+    hourly_data = {
+        "date": pd.date_range(
+            start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+            end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+            freq=pd.Timedelta(seconds=hourly.Interval()),
+            inclusive="left",
+        )
+    }
+
+    for k, v in data_dict.items():
+        hourly_data[k] = v
+
+    hourly_dataframe = pd.DataFrame(data=hourly_data)
+
+    return hourly_dataframe
