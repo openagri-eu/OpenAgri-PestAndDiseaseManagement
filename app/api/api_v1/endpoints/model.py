@@ -7,10 +7,24 @@ import crud
 from api import deps
 import datetime
 
-
+from core import settings
+from models import Parcel
 from schemas import DatasetIds, list_path_param
-from utils import fetch_parcel_by_id, fetch_parcel_lat_lon, fetch_weather_data, calculate_gdd_wd, \
-    openmeteo_friendly_variables, TimeUnit, calculate_risk_index_probability_wd, calculate_base
+from utils import (
+    fetch_parcel_by_id,
+    fetch_parcel_lat_lon,
+    fetch_weather_data,
+    calculate_gdd_wd,
+    openmeteo_friendly_variables,
+    TimeUnit,
+    calculate_risk_index_probability_wd,
+    calculate_base,
+    fetch_forecast_data_for_parcel,
+    calculate_forecast_risk_index,
+    fetch_weather_service_forecast_weather_data,
+    openweathermap_friendly_variables,
+    calculate_risk_index_forecast_wd
+)
 
 from http import HTTPStatus
 
@@ -100,6 +114,48 @@ def calculate_risk_index_fc(
     """
     Calculates and returns risk index values (uses resources located on fc)
     """
+#         latitude: float,
+#         longitude: float,
+#         start_date: datetime.date,
+#         end_date: datetime.date,
+#         variables: list,
+#         access_token: str,
+#         radius_km: int = 10,
+#         how_often: TimeUnit = TimeUnit.DAILY
+# ) -> dict:
+#     try:
+#         response = requests.post(
+#             url=WEATHER_DATA_API_CALL_URL + "/api/v1/history/{}/".format(how_often.value),
+#             headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(access_token)},
+#             json={
+#                 "lat": latitude,
+#                 "lon": longitude,
+#                 "start": start_date.isoformat(),
+#                 "end": end_date.isoformat(),
+#                 "variables": variables,
+#                 "radius_km": radius_km
+#             }
+#         )
+#     except RequestException:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Error during proxy call via gk"
+#         )
+#
+#     if response.status_code == 400:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Error during weather data api call, original error: {}".format(response.reason)
+#         )
+#
+#     if response.status_code == 404:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Error, GK returning 404, Weather Data API missing."
+#         )
+#
+#     return response.json()
+#
 
     if formatting == "JSON":
         raise HTTPException(
@@ -156,7 +212,199 @@ def calculate_risk_index_fc(
         )
 
     calculation_results = calculate_risk_index_probability_wd(
-        parcel=parcel_fc, pest_models=pest_models_db, weather_data=weather_data, lat=lat, lon=lon
+        parcel=parcel_fc, pest_models=pest_models_db, weather_data=weather_data, lat=lat, lon=lon,
+    )
+
+    return calculation_results
+
+
+#         latitude: float,
+#         longitude: float,
+#         start_date: datetime.date,
+#         end_date: datetime.date,
+#         variables: list,
+#         access_token: str,
+#         radius_km: int = 10,
+#         how_often: TimeUnit = TimeUnit.DAILY
+# ) -> dict:
+#     try:
+#         response = requests.post(
+#             url=WEATHER_DATA_API_CALL_URL + "/api/v1/history/{}/".format(how_often.value),
+#             headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(access_token)},
+#             json={
+#                 "lat": latitude,
+#                 "lon": longitude,
+#                 "start": start_date.isoformat(),
+#                 "end": end_date.isoformat(),
+#                 "variables": variables,
+#                 "radius_km": radius_km
+#             }
+#         )
+#     except RequestException:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Error during proxy call via gk"
+#         )
+#
+#     if response.status_code == 400:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Error during weather data api call, original error: {}".format(response.reason)
+#         )
+#
+#     if response.status_code == 404:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Error, GK returning 404, Weather Data API missing."
+#         )
+#
+#     return response.json()
+#
+@router.get("/{model_ids}/risk-index/forecast/", dependencies=[Depends(deps.get_jwt)])
+def calculate_risk_index_including_forecast(
+    parcel_id: int,
+    past_days: int = 0,
+    forecast_days: int = 7,
+    model_ids: DatasetIds = Depends(list_path_param),
+    db: Session = Depends(deps.get_db),
+    formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
+):
+    """
+    Calculates risk index forecast using weather data obtained from open-meteo
+    """
+
+    if formatting == "JSON":
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            detail="Error, the JSON format has yet to be implemented",
+        )
+
+    if past_days < settings.OPEN_METEO_MIN_PAST_DAYS or past_days > settings.OPEN_METEO_MAX_PAST_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, past_days outside of bounds, bounds are from {} to {}".format(
+                settings.OPEN_METEO_MIN_PAST_DAYS, settings.OPEN_METEO_MAX_PAST_DAYS
+            ),
+        )
+
+    if forecast_days < settings.OPEN_METEO_MIN_FORECAST_DAYS or forecast_days > settings.OPEN_METEO_MAX_FORECAST_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, forecast_days outside of bounds, bounds are from {} to {}".format(
+                settings.OPEN_METEO_MIN_FORECAST_DAYS,
+                settings.OPEN_METEO_MAX_FORECAST_DAYS,
+            ),
+        )
+
+    parcel_db: Parcel = crud.parcel.get(db=db, id=parcel_id)
+    if not parcel_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, parcel with id {} doesn't exist".format(parcel_id),
+        )
+
+    # Fetch the pest models from the database AND fetch a unique list of the units they require
+    variables_for_weather_data_call = []
+    pest_models_db = []
+    for pest_id in model_ids.ids:
+        pest_model_db = crud.pest_model.get(db=db, id=pest_id)
+        if not pest_model_db:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, model with ID {} does not exist".format(pest_id),
+            )
+
+        pest_models_db.append(pest_model_db)
+
+        # Appends the list of units
+        list_of_values = list(
+            set(
+                [
+                    condition.unit.name
+                    for rule in pest_model_db.rules
+                    for condition in rule.conditions
+                ]
+            )
+        )
+
+        variables_for_weather_data_call += list_of_values
+
+    hourly_fields = [
+        openmeteo_friendly_variables[var_name]
+        for var_name in variables_for_weather_data_call
+    ]
+
+    weather_data = fetch_forecast_data_for_parcel(
+        latitude=parcel_db.latitude,
+        longitude=parcel_db.longitude,
+        hourly_fields=hourly_fields,
+        past_days=past_days,
+        forecast_days=forecast_days,
+    )
+
+    if weather_data.empty:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, weather data API call failed, no data field in response",
+        )
+
+    calculation_results = calculate_forecast_risk_index(
+        parcel=parcel_db, pest_models=pest_models_db, weather_data=weather_data
+    )
+
+    return calculation_results
+
+
+
+@router.get("/{model_ids}/risk-index/forecast/weather-service/", dependencies=[Depends(deps.is_using_gatekeeper)])
+def risk_index_forecast_wd(
+    parcel_id: str,
+    access_token: str = Depends(deps.get_jwt),
+    model_ids: DatasetIds = Depends(list_path_param),
+    db: Session = Depends(deps.get_db),
+    formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
+):
+    """
+    Calculates risk index forecast using weather data obtained from the weather service
+    """
+
+    if formatting == "JSON":
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            detail="Error, the JSON format has yet to be implemented",
+        )
+
+    parcel_fc = fetch_parcel_by_id(access_token=access_token, parcel_id=parcel_id)
+
+    if not parcel_fc:
+        raise HTTPException(
+            status_code=400,
+            detail="Parcel with ID:{} doesn't exist".format(parcel_id)
+        )
+
+    lat, lon = fetch_parcel_lat_lon(parcel_fc)
+
+    # Now that we have a (lat,lon) pair, we can query the weather service for weather data
+    weather_data = fetch_weather_service_forecast_weather_data(
+        latitude=lat,
+        longitude=lon,
+        access_token=access_token
+    )
+
+    # Fetch the pest models from the database
+    pest_models_db = []
+    for pest_id in model_ids.ids:
+        pest_model_db = crud.pest_model.get(db=db, id=pest_id)
+        if not pest_model_db:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, model with ID {} does not exist".format(pest_id),
+            )
+
+        pest_models_db.append(pest_model_db)
+
+    calculation_results = calculate_risk_index_forecast_wd(
+        parcel=parcel_fc, pest_models=pest_models_db, df=weather_data
     )
 
     return calculation_results
