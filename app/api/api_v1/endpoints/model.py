@@ -250,6 +250,12 @@ def calculate_risk_index_including_forecast(
         for var_name in variables_for_weather_data_call
     ]
 
+    if len(hourly_fields) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Pest models don't have any conditions that risk index can be calculated against"
+        )
+
     weather_data = fetch_forecast_data_for_parcel(
         latitude=parcel_db.latitude,
         longitude=parcel_db.longitude,

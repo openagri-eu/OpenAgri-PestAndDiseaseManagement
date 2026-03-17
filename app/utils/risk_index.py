@@ -222,6 +222,8 @@ def calculate_forecast_risk_index(
         risks_for_current_pm = ["Low"] * weather_data.shape[0]
 
         for rule in pm.rules:
+            if len(rule.conditions) == 0:
+                continue
             final_str = "(x['{}'] {} {})".format(
                 rule.conditions[0].unit.name,
                 rule.conditions[0].operator.symbol,
