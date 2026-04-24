@@ -6,6 +6,8 @@
 The Pest and Disease Management(P&DM) service supports farmers by providing multiple ways of calculating a risk associated with
 diseases, Growing Degree Days for pests and other mechanisms.
 
+The service now includes a **fuzzy risk engine** (Mamdani fuzzy inference) that replaces the previous rule-engine approach. Crops and their associated threat models (pests/diseases) are managed via dedicated APIs, and risk scores (0–100) with classifications (Low / Moderate / High / Critical) are returned in the OpenAGRI JSON-LD format.
+
 # Requirements
 
 <ul>
@@ -49,9 +51,23 @@ A list of APIs can be viewed in the [API.md](https://github.com/openagri-eu/pest
 
 The basic flow for this service is as follows:
 1. The user registers and/or logs in;
-2. The user creates their parcel/s
+2. The user creates their parcel/s (historical weather data is seeded automatically on creation)
 3. The user creates one or more pest and/or disease models
 4. The user queries the system for either risk index or growing degree days (GDD) for pest and disease models respectively
+
+**Fuzzy risk flow (new):**
+1. Crops and threat models (with fuzzy rules and biological parameters) are pre-seeded from the reference dataset on first migration
+2. The user creates a parcel — one year of historical weather data is fetched automatically from OpenMeteo
+3. The user calls `/api/v1/fuzzy-risk/calculate/` with a parcel ID and date range for historical risk, or `/api/v1/fuzzy-risk/forecast/` for a forward-looking risk over the coming days
+4. Responses follow the OpenAGRI JSON-LD format with a 0–100 risk score and a risk class per pest per day
+
+New API prefixes:
+
+| Prefix | Purpose |
+|--------|---------|
+| `/api/v1/crop/` | Manage crop records |
+| `/api/v1/threat-model/` | Manage per-pest fuzzy rule sets; bulk import from Excel or JSON |
+| `/api/v1/fuzzy-risk/` | Calculate historical or forecast pest/disease risk |
 
 # Contribution
 Please contact the maintainer of this repository.

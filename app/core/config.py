@@ -60,5 +60,8 @@ class Settings(BaseSettings):
     OPEN_METEO_MIN_FORECAST_DAYS: int = 1
     OPEN_METEO_MAX_FORECAST_DAYS: int = 16
 
+    # Month when cumulative GDD resets (1 = Jan for NH, 7 = Jul for SH)
+    GDD_RESET_MONTH: int = 1
+
 
 settings = Settings()
