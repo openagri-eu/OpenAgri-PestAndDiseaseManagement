@@ -138,3 +138,107 @@ def fetch_forecast_data_for_parcel(
     hourly_dataframe = pd.DataFrame(data=hourly_data)
 
     return hourly_dataframe
+
+
+# OpenMeteo variable name → DB Data column name
+_OPENMETEO_TO_DB_COLUMNS = {
+    "temperature_2m":                "atmospheric_temperature",
+    "relative_humidity_2m":          "atmospheric_relative_humidity",
+    "precipitation":                 "precipitation",
+    "surface_pressure":              "atmospheric_pressure",
+    "wind_speed_10m":                "average_wind_speed",
+    "soil_temperature_0_to_7cm":     "soil_temperature_10cm",
+    "soil_temperature_7_to_28cm":    "soil_temperature_20cm",
+    "soil_temperature_28_to_100cm":  "soil_temperature_30cm",
+    "soil_temperature_100_to_255cm": "soil_temperature_40cm",
+}
+
+_FULL_HOURLY_FIELDS = list(_OPENMETEO_TO_DB_COLUMNS.keys())
+
+
+def _openmeteo_response_to_dataframe(hourly, fields: list) -> pd.DataFrame:
+    """Convert an OpenMeteo hourly response object to a DataFrame with DB column names."""
+    data = {
+        "date": pd.date_range(
+            start=pd.to_datetime(hourly.Time(),    unit="s", utc=True),
+            end=pd.to_datetime(hourly.TimeEnd(),   unit="s", utc=True),
+            freq=pd.Timedelta(seconds=hourly.Interval()),
+            inclusive="left",
+        )
+    }
+    for i, field in enumerate(fields):
+        db_col = _OPENMETEO_TO_DB_COLUMNS.get(field, field)
+        data[db_col] = hourly.Variables(i).ValuesAsNumpy()
+    return pd.DataFrame(data=data)
+
+
+def fetch_archive_hourly_for_range(
+    latitude: float,
+    longitude: float,
+    start_date: datetime.date,
+    end_date: datetime.date,
+) -> pd.DataFrame:
+    """Fetch hourly data from the OpenMeteo archive API for an arbitrary date range.
+
+    Columns are renamed to match the DB Data model (atmospheric_temperature, etc.).
+    """
+    cache_session = requests_cache.CachedSession(".cache", expire_after=-1)
+    retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+    openmeteo     = openmeteo_requests.Client(session=retry_session)
+
+    try:
+        responses = openmeteo.weather_api(
+            "https://archive-api.open-meteo.com/v1/archive",
+            params={
+                "latitude":   latitude,
+                "longitude":  longitude,
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date":   end_date.strftime("%Y-%m-%d"),
+                "hourly":     _FULL_HOURLY_FIELDS,
+                "timezone":   "auto",
+            },
+        )
+    finally:
+        openmeteo.session.close()
+
+    return _openmeteo_response_to_dataframe(responses[0].Hourly(), _FULL_HOURLY_FIELDS)
+
+
+def fetch_forecast_hourly_for_range(
+    latitude: float,
+    longitude: float,
+    start_date: datetime.date,
+    end_date: datetime.date,
+) -> pd.DataFrame:
+    """Fetch hourly data from the OpenMeteo forecast API for the given date range.
+
+    past_days and forecast_days are derived from the range vs today.
+    Returned DataFrame is filtered to [start_date, end_date] and uses DB column names.
+    """
+    today        = datetime.datetime.now().date()
+    past_days    = max(0, (today - start_date).days)
+    forecast_days = max(1, (end_date - today).days + 1)  # forecast_days is 1-based and required
+
+    cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
+    retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+    openmeteo     = openmeteo_requests.Client(session=retry_session)
+
+    try:
+        responses = openmeteo.weather_api(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude":      latitude,
+                "longitude":     longitude,
+                "hourly":        _FULL_HOURLY_FIELDS,
+                "past_days":     past_days,
+                "forecast_days": forecast_days,
+                "timezone":      "auto",
+            },
+        )
+    finally:
+        openmeteo.session.close()
+
+    df = _openmeteo_response_to_dataframe(responses[0].Hourly(), _FULL_HOURLY_FIELDS)
+    # Clip to requested range
+    mask = (df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)
+    return df[mask].reset_index(drop=True)
