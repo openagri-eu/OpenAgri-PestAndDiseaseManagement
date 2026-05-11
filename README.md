@@ -352,5 +352,4 @@ Please contact the maintainer of this repository.
 The fuzzy risk engine (biological parameters, fuzzy rule sets, and domain expertise on pest/disease modelling) was developed in collaboration with **Agrobit S.r.l.**, whose agronomic knowledge underpins the threat model definitions used in this service.
 
 # License
-This project code is licensed under the EUPL 1.2 license, see the [LICENSE](https://github.com/agstack/OpenAgri-PestAndDiseaseManagement/blob/main/LICENSE) file for more details.
-Please note that each service may have different licenses, which can be found their specific source code repository.
+This project code is licensed under the Apache License 2.0, see the [LICENSE](LICENSE) file for more details.
