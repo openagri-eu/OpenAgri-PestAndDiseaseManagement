@@ -5,7 +5,7 @@ from core import settings
 from requests.exceptions import RequestException
 
 
-from api.api_v1.endpoints import operator, pest_model, rule, tool, unit, model, disease, fuzzy_risk
+from api.api_v1.endpoints import operator, pest_model, rule, tool, unit, model, disease, fuzzy_risk, crop, threat_model
 
 
 def register_apis_to_gatekeeper():
@@ -38,6 +38,8 @@ def register_apis_to_gatekeeper():
     apis_to_register.include_router(model.router, prefix="/model")
     apis_to_register.include_router(disease.router, prefix="/disease")
     apis_to_register.include_router(fuzzy_risk.router, prefix="/fuzzy-risk")
+    apis_to_register.include_router(crop.router, prefix="/crop")
+    apis_to_register.include_router(threat_model.router, prefix="/threat-model")
 
     for api in apis_to_register.routes:
         try:
