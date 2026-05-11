@@ -248,6 +248,7 @@ Calculates risk from **weather data already stored in the database** for a parce
 
 - `threat_model_ids` is optional — omit to run all threat models.
 - Returns 404 if no weather rows exist for the parcel and date range.
+- Query param `?format=json-ld` (default) or `?format=json` controls the response shape.
 
 #### `POST /api/v1/fuzzy-risk/forecast/`
 
@@ -263,6 +264,7 @@ Calculates risk from a **live OpenMeteo forecast** for a parcel's location.
 
 - `days_ahead` defaults to 7; clamped to the configured min/max forecast window.
 - Weather data is fetched live and not stored.
+- Query param `?format=json-ld` (default) or `?format=json` controls the response shape.
 
 #### `POST /api/v1/fuzzy-risk/historical/`
 
@@ -273,13 +275,12 @@ Fetches historical weather from the **OpenMeteo archive API**, stores new rows (
   "parcel_id": 1,
   "from_date": "2024-01-01",
   "to_date": "2024-12-31",
-  "threat_model_ids": null,
-  "format": "json-ld"
+  "threat_model_ids": null
 }
 ```
 
-- `format`: `"json-ld"` (default, OpenAGRI envelope) or `"json"` (flat array of records).
 - Useful for backfilling parcels that have no stored weather data.
+- Query param `?format=json-ld` (default) or `?format=json` controls the response shape.
 
 #### `POST /api/v1/fuzzy-risk/forecast-fetch/`
 
@@ -290,16 +291,18 @@ Fetches weather from the **OpenMeteo forecast API** for a specific date range, s
   "parcel_id": 1,
   "from_date": "2025-04-28",
   "to_date": "2025-05-05",
-  "threat_model_ids": null,
-  "format": "json-ld"
+  "threat_model_ids": null
 }
 ```
 
 Same semantics as `historical/` but uses the forecast API.
+Query param `?format=json-ld` (default) or `?format=json` controls the response shape.
 
 ### Response Format
 
-All endpoints return an **OpenAGRI JSON-LD** envelope:
+All endpoints support two response shapes, selected via the `?format=` query parameter.
+
+**`?format=json-ld`** (default) — OpenAGRI JSON-LD envelope:
 
 ```json
 {
@@ -326,7 +329,22 @@ All endpoints return an **OpenAGRI JSON-LD** envelope:
 }
 ```
 
-The `meta` field contains debug information: best-matched rule, fuzzy activation degree (`mu`), phenological scaling factor (`mu_pheno`), consecutive wet-day streak, and leaf-wetness hours.
+**`?format=json`** — flat array of records, one entry per (pest, day) pair:
+
+```json
+[
+  {
+    "date": "2024-06-01",
+    "scientific_name": "Venturia inaequalis",
+    "common_name": "Apple scab",
+    "risk_score": 62.3,
+    "risk_class": "High",
+    "detail": "best_rule=High mu=0.78 mu_pheno=1.00 streak=4d wh=11h"
+  }
+]
+```
+
+The `meta` / `detail` field contains debug information: best-matched rule, fuzzy activation degree (`mu`), phenological scaling factor (`mu_pheno`), consecutive wet-day streak, and leaf-wetness hours.
 
 # Contribution
 Please contact the maintainer of this repository.

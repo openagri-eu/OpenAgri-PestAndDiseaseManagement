@@ -8,7 +8,7 @@ from retry_requests import retry
 from sqlalchemy.orm import Session
 
 import crud
-from models import Parcel
+from models import Data, Parcel
 from schemas import NewCreateData
 
 
@@ -242,3 +242,54 @@ def fetch_forecast_hourly_for_range(
     # Clip to requested range
     mask = (df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)
     return df[mask].reset_index(drop=True)
+
+
+def _dedupe_and_store_hourly(
+    db: Session,
+    hourly_df: pd.DataFrame,
+    parcel_id: int,
+    from_date: datetime.date,
+    to_date:   datetime.date,
+) -> int:
+    """Insert hourly rows for the parcel, skipping any that already exist for
+    the same (date, time). Returns the count of rows inserted."""
+    if hourly_df.empty:
+        return 0
+
+    existing = db.query(Data.date, Data.time).filter(
+        Data.parcel_id == parcel_id,
+        Data.date.between(from_date, to_date),
+    ).all()
+    existing_keys = {(row.date, row.time) for row in existing}
+
+    records: list[NewCreateData] = []
+    for row in hourly_df.itertuples(index=False):
+        ts = row.date
+        if hasattr(ts, "to_pydatetime"):
+            ts = ts.to_pydatetime()
+        d = ts.date()
+        t = ts.time().replace(tzinfo=None)
+        if (d, t) in existing_keys:
+            continue
+
+        def _f(v):
+            return None if pd.isna(v) else float(v)
+
+        records.append(NewCreateData(
+            date=d,
+            time=t,
+            atmospheric_temperature       = _f(getattr(row, "atmospheric_temperature",       float("nan"))),
+            atmospheric_relative_humidity = _f(getattr(row, "atmospheric_relative_humidity", float("nan"))),
+            atmospheric_pressure          = _f(getattr(row, "atmospheric_pressure",          float("nan"))),
+            precipitation                 = _f(getattr(row, "precipitation",                 float("nan"))),
+            average_wind_speed            = _f(getattr(row, "average_wind_speed",            float("nan"))),
+            soil_temperature_10cm         = _f(getattr(row, "soil_temperature_10cm",         float("nan"))),
+            soil_temperature_20cm         = _f(getattr(row, "soil_temperature_20cm",         float("nan"))),
+            soil_temperature_30cm         = _f(getattr(row, "soil_temperature_30cm",         float("nan"))),
+            soil_temperature_40cm         = _f(getattr(row, "soil_temperature_40cm",         float("nan"))),
+        ))
+
+    if not records:
+        return 0
+    crud.data.batch_insert(db=db, list_of_data=records, parcel_id=parcel_id)
+    return len(records)
