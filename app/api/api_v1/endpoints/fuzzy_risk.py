@@ -5,6 +5,7 @@ Replaces the rule-engine risk functions in data.py / tool.py.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,6 +16,7 @@ from api import deps
 from schemas.fuzzy_risk import (
     FuzzyRiskCalculateRequest,
     FuzzyRiskFetchRequest,
+    FuzzyRiskForecastFcRequest,
     FuzzyRiskForecastRequest,
 )
 from utils.data import (
@@ -22,6 +24,7 @@ from utils.data import (
     fetch_archive_hourly_for_range,
     fetch_forecast_hourly_for_range,
 )
+from utils.fcutils import fetch_parcel_by_id, fetch_parcel_lat_lon
 from utils.fuzzy_risk import (
     _format_results,
     _hourly_df_to_daily,
@@ -119,6 +122,34 @@ def historical_fetch_and_calculate(
     daily_df = _hourly_df_to_daily(hourly_df)
     results  = calculate_fuzzy_risk(daily_df, threat_models)
     return _format_results(results, parcel, response_format)
+
+
+@router.post("/fc/forecast/", dependencies=[Depends(deps.is_using_gatekeeper)])
+def forecast_risk_fc(
+    req: FuzzyRiskForecastFcRequest,
+    response_format: Literal["json", "json-ld"] = Query(default="json-ld", alias="format"),
+    access_token: str = Depends(deps.get_jwt),
+    db: Session = Depends(deps.get_db),
+):
+    """Forecast fuzzy risk via OpenMeteo for a Farm Calendar parcel (UUID-based)."""
+    parcel_fc = fetch_parcel_by_id(access_token=access_token, parcel_id=req.parcel_id)
+    if not parcel_fc:
+        raise HTTPException(status_code=404, detail="FC Parcel not found")
+
+    lat, lon = fetch_parcel_lat_lon(parcel_fc)
+
+    days = req.days_ahead or 7
+    daily_df = _openmeteo_to_daily_df(lat, lon, days)
+    if daily_df.empty:
+        raise HTTPException(status_code=502, detail="No forecast data returned from OpenMeteo")
+
+    threat_models = _resolve_threat_models(db, req.threat_model_ids)
+    if not threat_models:
+        raise HTTPException(status_code=404, detail="No threat models found")
+
+    results = calculate_fuzzy_risk(daily_df, threat_models)
+    parcel_proxy = SimpleNamespace(latitude=lat, longitude=lon)
+    return _format_results(results, parcel_proxy, response_format)
 
 
 @router.post("/forecast-fetch/", dependencies=[Depends(deps.get_jwt)])
