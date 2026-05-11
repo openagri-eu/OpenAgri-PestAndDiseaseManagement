@@ -25,3 +25,9 @@ class FuzzyRiskFetchRequest(BaseModel):
     from_date:         datetime.date
     to_date:           datetime.date
     threat_model_ids:  Optional[List[uuid.UUID]] = None
+
+
+class FuzzyRiskForecastFcRequest(BaseModel):
+    parcel_id:         str               # UUID string from Farm Calendar
+    threat_model_ids:  Optional[List[uuid.UUID]] = None
+    days_ahead:        Optional[int] = 7
