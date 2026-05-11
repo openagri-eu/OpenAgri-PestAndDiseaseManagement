@@ -25,8 +25,8 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 # Seed data paths (relative to project root where alembic runs)
-_XLSX = Path("other/db_crops_PDM.xlsx")
-_JSON = Path("other/pest.json")
+_XLSX = Path("data/db_crops_PDM.xlsx")
+_JSON = Path("data/pest.json")
 
 # ─── risk score mapping (mirrors fuzzy_risk._RISK_SCORE_MAP) ─────────────────
 _RISK_SCORE_MAP = {
