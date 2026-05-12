@@ -47,7 +47,7 @@ You can find working examples for GDD and Risk Index calculation in the followin
 - [GDD](scripts/gdd.md)
 - [Risk Index](scripts/riskindex.md)
 
-A list of APIs can be viewed in the [API.md](https://github.com/openagri-eu/pest-and-disease-management/blob/main/API.md) file, and a full list of APIs can be viewed [here](https://editor-next.swagger.io/?url=https://gist.githubusercontent.com/vlf-stefan-drobic/71d21b192db0b968278a48d6e5e6d9cb/raw/dd4bd697421dba235210040fa272a0bb1fbaaa5c/gistfile1.txt).
+A list of APIs can be viewed in the [API.md](https://github.com/openagri-eu/pest-and-disease-management/blob/main/API.md) file, and a full list of APIs can be viewed [here](https://editor.swagger.io/?url=https://gist.githubusercontent.com/vlf-stefan-drobic/71d21b192db0b968278a48d6e5e6d9cb/raw/70bf0e1f05163ef0cf63d5b3950711e98a43c865/gistfile1.txt).
 
 The basic flow for this service is as follows:
 1. The user registers and/or logs in;
