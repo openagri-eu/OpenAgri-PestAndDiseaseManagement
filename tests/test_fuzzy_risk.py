@@ -447,3 +447,29 @@ class TestCalculateFuzzyRisk:
         )
         result = calculate_fuzzy_risk(raw_weather, [tm])
         assert len(result) == len(raw_weather)
+
+    def test_all_null_bio_params_does_not_crash(self, raw_weather: pd.DataFrame):
+        # all bio_params fields explicitly null (as created by colleague's threat model)
+        # min_streak null was causing TypeError: '<' not supported between int and NoneType
+        tm = FakeThreatModel(
+            scientific_name="Arborea-arboris", common_name="arbor",
+            definition={
+                "bio_params": {
+                    "t_base": None, "pheno_hi": None, "pheno_lo": None,
+                    "min_streak": None, "t_lethal_max": None, "t_lethal_min": None,
+                    "pheno_frac_hi": None, "pheno_frac_lo": None,
+                    "t_optimal_max": None, "t_optimal_min": None,
+                    "pheno_frac_ref_gdd5": None,
+                    "min_wetness_hours_high": None, "min_wetness_hours_critical": None,
+                },
+                "fuzzy_rules": [
+                    {"type": "ww", "hum_hi": 100, "hum_lo": 0,
+                     "temp_hi": 999, "temp_lo": -999, "rain_min": 0,
+                     "risk_level": "low"},
+                ],
+            },
+        )
+        result = calculate_fuzzy_risk(raw_weather, [tm])
+        assert len(result) == len(raw_weather)
+        assert (result["risk_score"] >= 0.0).all()
+        assert (result["risk_score"] <= 100.0).all()

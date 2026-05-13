@@ -304,7 +304,7 @@ def score_day(
     score    = sum(m * s for m, s, _ in activated) / total_mu
 
     # Streak penalty
-    min_streak = pest_params.get("min_streak", 1)
+    min_streak = pest_params.get("min_streak") or 1
     if streak < min_streak:
         if min_streak >= 2:
             streak_factor = streak / max(min_streak, 1)
