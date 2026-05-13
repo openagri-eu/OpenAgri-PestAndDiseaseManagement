@@ -231,6 +231,45 @@ class TestDefinitionToRules:
         assert _definition_to_rules({}) == []
         assert _definition_to_rules({"fuzzy_rules": []}) == []
 
+    def test_null_numeric_rule_fields_use_defaults(self):
+        # keys present but null → must use defaults, not crash with float(None)
+        rules = _definition_to_rules({
+            "fuzzy_rules": [{
+                "hum_lo": None, "hum_hi": None,
+                "temp_lo": None, "temp_hi": None,
+                "rain_min": None, "risk_level": "low",
+            }]
+        })
+        assert len(rules) == 1
+        assert rules[0]["hum_lo"] == 0.0
+        assert rules[0]["hum_hi"] == 100.0
+        assert rules[0]["temp_lo"] == -999.0
+        assert rules[0]["temp_hi"] == 999.0
+        assert rules[0]["rain_min"] == 0.0
+
+    def test_zero_temp_lo_not_replaced_by_default(self):
+        # 0.0 is a valid temp_lo (frost threshold); must not be treated as falsy
+        rules = _definition_to_rules({
+            "fuzzy_rules": [{
+                "hum_lo": 0.0, "hum_hi": 100.0,
+                "temp_lo": 0.0, "temp_hi": 10.0,
+                "rain_min": 0.0, "risk_level": "moderate",
+            }]
+        })
+        assert rules[0]["temp_lo"] == 0.0
+
+    def test_null_risk_level_falls_back_to_low(self):
+        # null risk_level must not produce "none" label silently
+        rules = _definition_to_rules({
+            "fuzzy_rules": [{
+                "hum_lo": 0.0, "hum_hi": 100.0,
+                "temp_lo": -999.0, "temp_hi": 999.0,
+                "rain_min": 0.0, "risk_level": None,
+            }]
+        })
+        assert rules[0]["risk"] == "Low"
+        assert rules[0]["risk_score"] == 10
+
 
 # ─── compute_features ────────────────────────────────────────────────────────
 
@@ -447,3 +486,29 @@ class TestCalculateFuzzyRisk:
         )
         result = calculate_fuzzy_risk(raw_weather, [tm])
         assert len(result) == len(raw_weather)
+
+    def test_all_null_bio_params_does_not_crash(self, raw_weather: pd.DataFrame):
+        # all bio_params fields explicitly null (as created by colleague's threat model)
+        # min_streak null was causing TypeError: '<' not supported between int and NoneType
+        tm = FakeThreatModel(
+            scientific_name="Arborea-arboris", common_name="arbor",
+            definition={
+                "bio_params": {
+                    "t_base": None, "pheno_hi": None, "pheno_lo": None,
+                    "min_streak": None, "t_lethal_max": None, "t_lethal_min": None,
+                    "pheno_frac_hi": None, "pheno_frac_lo": None,
+                    "t_optimal_max": None, "t_optimal_min": None,
+                    "pheno_frac_ref_gdd5": None,
+                    "min_wetness_hours_high": None, "min_wetness_hours_critical": None,
+                },
+                "fuzzy_rules": [
+                    {"type": "ww", "hum_hi": 100, "hum_lo": 0,
+                     "temp_hi": 999, "temp_lo": -999, "rain_min": 0,
+                     "risk_level": "low"},
+                ],
+            },
+        )
+        result = calculate_fuzzy_risk(raw_weather, [tm])
+        assert len(result) == len(raw_weather)
+        assert (result["risk_score"] >= 0.0).all()
+        assert (result["risk_score"] <= 100.0).all()

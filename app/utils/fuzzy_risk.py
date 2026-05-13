@@ -304,7 +304,7 @@ def score_day(
     score    = sum(m * s for m, s, _ in activated) / total_mu
 
     # Streak penalty
-    min_streak = pest_params.get("min_streak", 1)
+    min_streak = pest_params.get("min_streak") or 1
     if streak < min_streak:
         if min_streak >= 2:
             streak_factor = streak / max(min_streak, 1)
@@ -356,17 +356,23 @@ def score_day(
 # PUBLIC ENGINE ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _nf(val: Any, default: float) -> float:
+    """Return float(val) or default when val is None (key absent OR explicit null)."""
+    return default if val is None else float(val)
+
+
 def _definition_to_rules(definition: dict) -> list[dict]:
     """Convert ThreatModel.definition fuzzy_rules to score_day format."""
     rules = []
     for r in definition.get("fuzzy_rules", []):
-        risk_label = str(r.get("risk_level", "low")).lower()
+        raw_level  = r.get("risk_level")
+        risk_label = str(raw_level).lower() if raw_level is not None else "low"
         rules.append({
-            "hum_lo":     float(r.get("hum_lo",    0.0)),
-            "hum_hi":     float(r.get("hum_hi",  100.0)),
-            "temp_lo":    float(r.get("temp_lo", -999.0)),
-            "temp_hi":    float(r.get("temp_hi",  999.0)),
-            "rain_min":   float(r.get("rain_min",  0.0)),
+            "hum_lo":     _nf(r.get("hum_lo"),    0.0),
+            "hum_hi":     _nf(r.get("hum_hi"),  100.0),
+            "temp_lo":    _nf(r.get("temp_lo"), -999.0),
+            "temp_hi":    _nf(r.get("temp_hi"),  999.0),
+            "rain_min":   _nf(r.get("rain_min"),  0.0),
             "risk":       risk_label.capitalize(),
             "risk_score": _RISK_SCORE_MAP.get(risk_label, 10),
         })
