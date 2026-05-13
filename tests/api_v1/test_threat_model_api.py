@@ -147,3 +147,42 @@ class TestThreatModelAPI:
         }
         r = client.post("/", json=payload)
         assert r.status_code == 422
+
+    def test_create_null_t_base_rejected(self, client, mocker):
+        mock_crud = mocker.patch(self.CRUD)
+        mock_crud.crop.get.return_value = MagicMock(spec=Crop)
+        payload = {
+            "scientific_name": "X",
+            "common_name":     "Y",
+            "definition": {
+                "bio_params": {"t_base": None},
+                "fuzzy_rules": [
+                    {"hum_lo": 70.0, "hum_hi": 100.0, "temp_lo": 5.0, "temp_hi": 25.0,
+                     "rain_min": 1.0, "risk_level": "high"},
+                ],
+            },
+            "crop_id": str(uuid.uuid4()),
+        }
+        r = client.post("/", json=payload)
+        assert r.status_code == 422
+
+    def test_create_missing_t_base_uses_default(self, client, mocker):
+        crop_id = uuid.uuid4()
+        tm = _make_tm()
+        mock_crud = mocker.patch(self.CRUD)
+        mock_crud.crop.get.return_value = MagicMock(spec=Crop)
+        mock_crud.threat_model.create.return_value = tm
+        payload = {
+            "scientific_name": "Venturia inaequalis",
+            "common_name":     "Apple scab",
+            "definition": {
+                "bio_params": {},  # t_base omitted — should default to 5.0
+                "fuzzy_rules": [
+                    {"hum_lo": 70.0, "hum_hi": 100.0, "temp_lo": 5.0, "temp_hi": 25.0,
+                     "rain_min": 1.0, "risk_level": "high"},
+                ],
+            },
+            "crop_id": str(crop_id),
+        }
+        r = client.post("/", json=payload)
+        assert r.status_code == 200

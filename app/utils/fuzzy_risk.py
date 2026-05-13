@@ -241,7 +241,8 @@ def score_day(
     frac_lo  = pest_params.get("pheno_frac_lo")
     frac_hi  = pest_params.get("pheno_frac_hi")
 
-    t_base_pest  = pest_params.get("t_base", PHENOLOGY_T_BASE)
+    _tb = pest_params.get("t_base")
+    t_base_pest  = _tb if _tb is not None else PHENOLOGY_T_BASE
     gdd_col_pest = f"gdd_cum_{int(t_base_pest)}b"
     ref_col_pest = f"gdd_annual_ref_{int(t_base_pest)}b"
     gdd_now = float(weather_row.get(gdd_col_pest, weather_row.get("gdd_cum_pheno", 0)))
@@ -385,7 +386,7 @@ def calculate_fuzzy_risk(
       date, scientific_name, common_name, risk_score, risk_class, detail
     """
     extra_t_bases = {
-        float(tm.definition.get("bio_params", {}).get("t_base", 5.0))
+        float(v if (v := (tm.definition.get("bio_params") or {}).get("t_base")) is not None else 5.0)
         for tm in threat_models
     }
     enriched = compute_features(weather_df, extra_t_bases=extra_t_bases)
@@ -393,7 +394,7 @@ def calculate_fuzzy_risk(
     results = []
     for tm in threat_models:
         definition  = tm.definition if isinstance(tm.definition, dict) else {}
-        bio_params  = definition.get("bio_params", {})
+        bio_params  = definition.get("bio_params") or {}
         rules       = _definition_to_rules(definition)
 
         if not rules:
