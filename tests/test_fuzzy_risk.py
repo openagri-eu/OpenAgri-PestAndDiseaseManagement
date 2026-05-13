@@ -231,6 +231,45 @@ class TestDefinitionToRules:
         assert _definition_to_rules({}) == []
         assert _definition_to_rules({"fuzzy_rules": []}) == []
 
+    def test_null_numeric_rule_fields_use_defaults(self):
+        # keys present but null → must use defaults, not crash with float(None)
+        rules = _definition_to_rules({
+            "fuzzy_rules": [{
+                "hum_lo": None, "hum_hi": None,
+                "temp_lo": None, "temp_hi": None,
+                "rain_min": None, "risk_level": "low",
+            }]
+        })
+        assert len(rules) == 1
+        assert rules[0]["hum_lo"] == 0.0
+        assert rules[0]["hum_hi"] == 100.0
+        assert rules[0]["temp_lo"] == -999.0
+        assert rules[0]["temp_hi"] == 999.0
+        assert rules[0]["rain_min"] == 0.0
+
+    def test_zero_temp_lo_not_replaced_by_default(self):
+        # 0.0 is a valid temp_lo (frost threshold); must not be treated as falsy
+        rules = _definition_to_rules({
+            "fuzzy_rules": [{
+                "hum_lo": 0.0, "hum_hi": 100.0,
+                "temp_lo": 0.0, "temp_hi": 10.0,
+                "rain_min": 0.0, "risk_level": "moderate",
+            }]
+        })
+        assert rules[0]["temp_lo"] == 0.0
+
+    def test_null_risk_level_falls_back_to_low(self):
+        # null risk_level must not produce "none" label silently
+        rules = _definition_to_rules({
+            "fuzzy_rules": [{
+                "hum_lo": 0.0, "hum_hi": 100.0,
+                "temp_lo": -999.0, "temp_hi": 999.0,
+                "rain_min": 0.0, "risk_level": None,
+            }]
+        })
+        assert rules[0]["risk"] == "Low"
+        assert rules[0]["risk_score"] == 10
+
 
 # ─── compute_features ────────────────────────────────────────────────────────
 
