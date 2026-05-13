@@ -34,7 +34,7 @@ class FuzzyRule(BaseModel):
 
 
 class BioParams(BaseModel):
-    t_base:                     Optional[float] = None
+    t_base:                     float           = 5.0
     t_lethal_min:               Optional[float] = None
     t_lethal_max:               Optional[float] = None
     t_optimal_min:              Optional[float] = None

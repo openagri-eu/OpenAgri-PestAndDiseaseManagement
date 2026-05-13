@@ -416,3 +416,34 @@ class TestCalculateFuzzyRisk:
     ):
         result = calculate_fuzzy_risk(raw_weather, [insect_threat_model])
         assert len(result) == len(raw_weather)
+
+    def test_null_t_base_does_not_crash(self, raw_weather: pd.DataFrame):
+        # bio_params.t_base explicitly null — engine must fall back to 5.0, not TypeError
+        tm = FakeThreatModel(
+            scientific_name="Null Base", common_name="Test",
+            definition={
+                "bio_params": {"t_base": None},
+                "fuzzy_rules": [
+                    {"hum_lo": 70.0, "hum_hi": 100.0, "temp_lo": 5.0, "temp_hi": 30.0,
+                     "rain_min": 1.0, "risk_level": "moderate"},
+                ],
+            },
+        )
+        result = calculate_fuzzy_risk(raw_weather, [tm])
+        assert len(result) == len(raw_weather)
+        assert (result["risk_score"] >= 0.0).all()
+
+    def test_null_bio_params_does_not_crash(self, raw_weather: pd.DataFrame):
+        # bio_params key exists but value is null — engine must not AttributeError
+        tm = FakeThreatModel(
+            scientific_name="Null Params", common_name="Test",
+            definition={
+                "bio_params": None,
+                "fuzzy_rules": [
+                    {"hum_lo": 70.0, "hum_hi": 100.0, "temp_lo": 5.0, "temp_hi": 30.0,
+                     "rain_min": 1.0, "risk_level": "moderate"},
+                ],
+            },
+        )
+        result = calculate_fuzzy_risk(raw_weather, [tm])
+        assert len(result) == len(raw_weather)
