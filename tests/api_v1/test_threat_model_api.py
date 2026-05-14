@@ -186,3 +186,63 @@ class TestThreatModelAPI:
         }
         r = client.post("/", json=payload)
         assert r.status_code == 200
+
+    def test_no_warnings_well_formed_model(self, client, mocker):
+        tm = _make_tm()
+        mock_crud = mocker.patch(self.CRUD)
+        mock_crud.crop.get.return_value = MagicMock(spec=Crop)
+        mock_crud.threat_model.create.return_value = tm
+        payload = {
+            "scientific_name": "Venturia inaequalis",
+            "common_name":     "Apple scab",
+            "definition":      SAMPLE_DEFINITION,
+            "crop_id":         str(uuid.uuid4()),
+        }
+        r = client.post("/", json=payload)
+        assert r.status_code == 200
+        assert r.json()["warnings"] == []
+
+    def test_warnings_trivial_rules(self, client, mocker):
+        trivial_def = {
+            "bio_params": {"t_lethal_min": -5.0, "t_lethal_max": 40.0},
+            "fuzzy_rules": [{"risk_level": "high"}],  # all range defaults
+        }
+        tm = _make_tm()
+        tm.definition = trivial_def
+        mock_crud = mocker.patch(self.CRUD)
+        mock_crud.crop.get.return_value = MagicMock(spec=Crop)
+        mock_crud.threat_model.create.return_value = tm
+        payload = {
+            "scientific_name": "X",
+            "common_name":     "Y",
+            "definition":      trivial_def,
+            "crop_id":         str(uuid.uuid4()),
+        }
+        r = client.post("/", json=payload)
+        assert r.status_code == 200
+        warns = r.json()["warnings"]
+        assert any("identical risk" in w for w in warns)
+
+    def test_warnings_empty_bio_params(self, client, mocker):
+        empty_bio_def = {
+            "bio_params": {},
+            "fuzzy_rules": [
+                {"hum_lo": 70.0, "hum_hi": 100.0, "temp_lo": 5.0, "temp_hi": 25.0,
+                 "rain_min": 2.0, "risk_level": "high"},
+            ],
+        }
+        tm = _make_tm()
+        tm.definition = empty_bio_def
+        mock_crud = mocker.patch(self.CRUD)
+        mock_crud.crop.get.return_value = MagicMock(spec=Crop)
+        mock_crud.threat_model.create.return_value = tm
+        payload = {
+            "scientific_name": "X",
+            "common_name":     "Y",
+            "definition":      empty_bio_def,
+            "crop_id":         str(uuid.uuid4()),
+        }
+        r = client.post("/", json=payload)
+        assert r.status_code == 200
+        warns = r.json()["warnings"]
+        assert any("No biological parameters" in w for w in warns)
