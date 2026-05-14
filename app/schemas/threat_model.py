@@ -3,6 +3,8 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, UUID4, Field, model_validator
 
+from utils.threat_model_warnings import collect_warnings
+
 
 class RiskLevel(str, Enum):
     low      = "low"
@@ -81,3 +83,10 @@ class ThreatModelDB(BaseModel):
     note:            Optional[str] = None
     definition:      dict
     crop_id:         UUID4
+    warnings:        List[str] = []
+
+    @model_validator(mode="after")
+    def populate_warnings(self) -> "ThreatModelDB":
+        if isinstance(self.definition, dict):
+            self.warnings = collect_warnings(self.definition)
+        return self
