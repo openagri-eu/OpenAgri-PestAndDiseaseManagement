@@ -122,6 +122,48 @@ def fetch_weather_service_forecast_weather_data(
 
     return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
 
+def fetch_weather_service_forecast_weather_data_offline(
+    latitude: float,
+    longitude: float,
+):
+    if settings.WEATHER_SERVICE_BASE_URL is None:
+        raise HTTPException(
+            status_code=500,
+            detail="WEATHER_SERVICE_BASE_URL is not configured for offline deployment."
+        )
+
+    url = str(settings.WEATHER_SERVICE_BASE_URL).strip("/") + "/api/data/forecast5"
+
+    try:
+        response = requests.get(
+            url=url,
+            headers={"Content-Type": "application/json"},
+            params={
+                "lat": latitude,
+                "lon": longitude
+            }
+        )
+    except RequestException:
+        raise HTTPException(
+            status_code=400,
+            detail="Error during direct weather service call"
+        )
+
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400,
+            detail="Error during weather data api call, original error: {}".format(response.reason)
+        )
+
+    if response.status_code == 404:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, weather service returning 404, endpoint missing."
+        )
+
+    return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
+
+
 def convert_weather_service_forecast_weather_data_to_dataframe(
     json_data: list
 ):

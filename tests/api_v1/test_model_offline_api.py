@@ -81,7 +81,7 @@ class TestOfflineRiskIndexForecast:
     def test_happy_path(self, client: TestClient, mock_db_session: MagicMock, mocker):
         mocker.patch(f"{ENDPOINT_MODULE}.crud.pest_model.get", return_value=_make_pest_model())
         mocker.patch(
-            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data",
+            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data_offline",
             return_value=SAMPLE_WEATHER_DF,
         )
         mocker.patch(
@@ -99,7 +99,7 @@ class TestOfflineRiskIndexForecast:
     def test_json_format_returns_plain_dict(self, client: TestClient, mock_db_session: MagicMock, mocker):
         mocker.patch(f"{ENDPOINT_MODULE}.crud.pest_model.get", return_value=_make_pest_model())
         mocker.patch(
-            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data",
+            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data_offline",
             return_value=SAMPLE_WEATHER_DF,
         )
         mocker.patch(
@@ -131,7 +131,7 @@ class TestOfflineRiskIndexForecast:
     def test_invalid_pest_model_id(self, client: TestClient, mock_db_session: MagicMock, mocker):
         mocker.patch(f"{ENDPOINT_MODULE}.crud.pest_model.get", return_value=None)
         mocker.patch(
-            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data",
+            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data_offline",
             return_value=SAMPLE_WEATHER_DF,
         )
 
@@ -142,18 +142,18 @@ class TestOfflineRiskIndexForecast:
 
     def test_weather_service_failure(self, client: TestClient, mocker):
         mocker.patch(
-            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data",
-            side_effect=HTTPException(status_code=400, detail="Error during proxy call via gk"),
+            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data_offline",
+            side_effect=HTTPException(status_code=400, detail="Error during direct weather service call"),
         )
 
         r = client.get(OFFLINE_URL, params={"latitude": 45.0, "longitude": 14.0})
 
         assert r.status_code == 400
-        assert "proxy call" in r.json()["detail"]
+        assert "direct weather service call" in r.json()["detail"]
 
-    def test_weather_fetch_called_without_token(self, client: TestClient, mocker):
+    def test_weather_fetch_called_with_only_lat_lon(self, client: TestClient, mocker):
         mock_fetch = mocker.patch(
-            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data",
+            f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data_offline",
             return_value=SAMPLE_WEATHER_DF,
         )
         mocker.patch(f"{ENDPOINT_MODULE}.crud.pest_model.get", return_value=_make_pest_model())
@@ -196,3 +196,53 @@ class TestFetchWeatherServiceForecastNoBearerToken:
 
         headers_used = mock_get.call_args.kwargs["headers"]
         assert headers_used["Authorization"] == "Bearer mytoken"
+
+
+class TestFetchWeatherServiceOffline:
+
+    def test_no_authorization_header_sent(self, mocker):
+        from utils.wdutils import fetch_weather_service_forecast_weather_data_offline
+
+        mock_get = mocker.patch("utils.wdutils.requests.get")
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = []
+        mocker.patch("utils.wdutils.convert_weather_service_forecast_weather_data_to_dataframe", return_value=None)
+
+        fetch_weather_service_forecast_weather_data_offline(45.0, 14.0)
+
+        headers_used = mock_get.call_args.kwargs["headers"]
+        assert "Authorization" not in headers_used
+
+    def test_raises_500_when_url_not_configured(self, monkeypatch):
+        from utils.wdutils import fetch_weather_service_forecast_weather_data_offline
+
+        monkeypatch.setattr(settings, "WEATHER_SERVICE_BASE_URL", None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            fetch_weather_service_forecast_weather_data_offline(45.0, 14.0)
+
+        assert exc_info.value.status_code == 500
+        assert "WEATHER_SERVICE_BASE_URL" in exc_info.value.detail
+
+    def test_raises_400_on_request_exception(self, mocker):
+        from utils.wdutils import fetch_weather_service_forecast_weather_data_offline
+        from requests import RequestException
+
+        mocker.patch("utils.wdutils.requests.get", side_effect=RequestException())
+
+        with pytest.raises(HTTPException) as exc_info:
+            fetch_weather_service_forecast_weather_data_offline(45.0, 14.0)
+
+        assert exc_info.value.status_code == 400
+
+    def test_raises_400_on_404_response(self, mocker):
+        from utils.wdutils import fetch_weather_service_forecast_weather_data_offline
+
+        mock_get = mocker.patch("utils.wdutils.requests.get")
+        mock_get.return_value.status_code = 404
+
+        with pytest.raises(HTTPException) as exc_info:
+            fetch_weather_service_forecast_weather_data_offline(45.0, 14.0)
+
+        assert exc_info.value.status_code == 400
+        assert "404" in exc_info.value.detail

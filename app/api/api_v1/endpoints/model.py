@@ -23,6 +23,7 @@ from utils import (
     fetch_forecast_data_for_parcel,
     calculate_forecast_risk_index,
     fetch_weather_service_forecast_weather_data,
+    fetch_weather_service_forecast_weather_data_offline,
     openweathermap_friendly_variables,
     calculate_risk_index_forecast_wd
 )
@@ -357,9 +358,10 @@ def risk_index_forecast_wd_offline(
     Returns: 200 with risk classifications per model per forecast timestamp
              403 if OFFLINE_DEPLOYMENT is disabled
              400 if any model UUID does not exist or weather service call fails
+             500 if WEATHER_SERVICE_BASE_URL is not configured
     """
 
-    weather_data = fetch_weather_service_forecast_weather_data(
+    weather_data = fetch_weather_service_forecast_weather_data_offline(
         latitude=latitude,
         longitude=longitude,
     )

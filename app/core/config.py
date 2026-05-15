@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     LOGGING: str
 
     OFFLINE_DEPLOYMENT: bool = False
+    WEATHER_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
 
     OPEN_METEO_MAX_PAST_DAYS: int = 92
     OPEN_METEO_MIN_PAST_DAYS: int = 0
