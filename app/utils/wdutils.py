@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from typing import Optional
 
 import pandas
 import requests
@@ -86,15 +87,16 @@ def fetch_weather_data(
 def fetch_weather_service_forecast_weather_data(
     latitude: float,
     longitude: float,
-    access_token: str,
+    access_token: Optional[str] = None,
 ):
+    headers = {"Content-Type": "application/json"}
+    if access_token:
+        headers["Authorization"] = "Bearer {}".format(access_token)
+
     try:
         response = requests.get(
             url=WEATHER_DATA_API_CALL_URL + "/api/data/forecast5/",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer {}".format(access_token)
-            },
+            headers=headers,
             params={
                 "lat": latitude,
                 "lon": longitude

@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -327,6 +328,59 @@ def risk_index_forecast_wd(
 
     calculation_results = calculate_risk_index_forecast_wd(
         parcel=parcel_fc, pest_models=pest_models_db, df=weather_data
+    )
+
+    return calculation_results
+
+
+@router.get("/{model_ids}/risk-index/forecast/weather-service/offline/", dependencies=[Depends(deps.is_offline_deployment)])
+def risk_index_forecast_wd_offline(
+    latitude: float,
+    longitude: float,
+    model_ids: DatasetIds = Depends(list_path_param),
+    db: Session = Depends(deps.get_db),
+    formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
+):
+    """
+    Calculates pest risk index forecast for the given location using weather service data,
+    without requiring a gatekeeper instance or access token.
+    Offline-deployment only — returns 403 if OFFLINE_DEPLOYMENT is not enabled.
+
+    Path:    model_ids         — comma-separated pest model UUIDs
+    Query:   latitude          — WGS-84 latitude
+             longitude         — WGS-84 longitude
+             formatting        — "JSON-LD" (default) | "JSON" (not implemented)
+    Returns: JSON-LD ObservationCollection with risk classifications per model per timestamp
+    """
+
+    if formatting == "JSON":
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            detail="Error, the JSON format has yet to be implemented",
+        )
+
+    weather_data = fetch_weather_service_forecast_weather_data(
+        latitude=latitude,
+        longitude=longitude,
+    )
+
+    pest_models_db = []
+    for pest_id in model_ids.ids:
+        pest_model_db = crud.pest_model.get(db=db, id=pest_id)
+        if not pest_model_db:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, model with ID {} does not exist".format(pest_id),
+            )
+        pest_models_db.append(pest_model_db)
+
+    synthetic_parcel = {
+        "@id": "urn:openagri:offline:{}".format(uuid.uuid4()),
+        "location": {"lat": latitude, "long": longitude},
+    }
+
+    calculation_results = calculate_risk_index_forecast_wd(
+        parcel=synthetic_parcel, pest_models=pest_models_db, df=weather_data
     )
 
     return calculation_results

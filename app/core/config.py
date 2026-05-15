@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     SERVICE_NAME: str
     LOGGING: str
 
+    OFFLINE_DEPLOYMENT: bool = False
+
     OPEN_METEO_MAX_PAST_DAYS: int = 92
     OPEN_METEO_MIN_PAST_DAYS: int = 0
     OPEN_METEO_MIN_FORECAST_DAYS: int = 1

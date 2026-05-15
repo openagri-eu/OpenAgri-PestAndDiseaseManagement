@@ -104,3 +104,11 @@ def is_not_using_gatekeeper():
             status_code=400,
             detail="Can't use this API while connected to a gatekeeper"
         )
+
+
+def is_offline_deployment():
+    if not settings.OFFLINE_DEPLOYMENT:
+        raise HTTPException(
+            status_code=403,
+            detail="This endpoint is only available in offline deployment mode."
+        )
