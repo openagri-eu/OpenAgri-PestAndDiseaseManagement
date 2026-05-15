@@ -136,7 +136,8 @@ def convert_weather_service_forecast_weather_data_to_dataframe(
 def calculate_risk_index_forecast_wd(
     df: pandas.DataFrame,
     parcel,
-    pest_models: list
+    pest_models: list,
+    formatting: str = "JSON-LD",
 ):
     reverse_dict = {v: k for k, v in openweathermap_friendly_variables.items()}
     df.rename(columns=reverse_dict, inplace=True)
@@ -169,6 +170,31 @@ def calculate_risk_index_forecast_wd(
             ]
 
         df["{}".format(pm.name)] = risks_for_current_pm
+
+    if formatting == "JSON":
+        models = []
+        for pm in pest_models:
+            observations = [
+                {
+                    "timestamp": "{}".format(str(date).replace(" ", "T")),
+                    "risk": "{}".format(risk),
+                }
+                for date, risk in zip(df["timestamp"], df["{}".format(pm.name)])
+            ]
+            models.append(
+                {
+                    "name": pm.name,
+                    "location": {
+                        "lat": parcel["location"]["lat"],
+                        "lon": parcel["location"]["long"],
+                    },
+                    "observations": observations,
+                }
+            )
+        return {
+            "result_time": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "models": models,
+        }
 
     context = utils.context
 

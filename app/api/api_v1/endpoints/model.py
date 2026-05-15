@@ -288,14 +288,17 @@ def risk_index_forecast_wd(
     formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
 ):
     """
-    Calculates risk index forecast using weather data obtained from the weather service
-    """
+    Calculates pest risk index forecast for a parcel using weather service data via gatekeeper.
+    Gatekeeper only — returns 403 if USING_GATEKEEPER is disabled.
 
-    if formatting == "JSON":
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_IMPLEMENTED,
-            detail="Error, the JSON format has yet to be implemented",
-        )
+    Path:    model_ids         — comma-separated pest model UUIDs
+    Query:   parcel_id         — UUID of the parcel to fetch location from
+             formatting        — "JSON-LD" (default): ObservationCollection graph with full linked-data context
+                                 "JSON": plain summary object { result_time, models: [{ name, location, observations: [{ timestamp, risk }] }] }
+    Returns: 200 with risk classifications per model per forecast timestamp
+             403 if USING_GATEKEEPER is disabled
+             400 if parcel does not exist, any model UUID does not exist, or weather service call fails
+    """
 
     parcel_fc = fetch_parcel_by_id(access_token=access_token, parcel_id=parcel_id)
 
@@ -327,7 +330,7 @@ def risk_index_forecast_wd(
         pest_models_db.append(pest_model_db)
 
     calculation_results = calculate_risk_index_forecast_wd(
-        parcel=parcel_fc, pest_models=pest_models_db, df=weather_data
+        parcel=parcel_fc, pest_models=pest_models_db, df=weather_data, formatting=formatting
     )
 
     return calculation_results
@@ -349,15 +352,12 @@ def risk_index_forecast_wd_offline(
     Path:    model_ids         — comma-separated pest model UUIDs
     Query:   latitude          — WGS-84 latitude
              longitude         — WGS-84 longitude
-             formatting        — "JSON-LD" (default) | "JSON" (not implemented)
-    Returns: JSON-LD ObservationCollection with risk classifications per model per timestamp
+             formatting        — "JSON-LD" (default): ObservationCollection graph with full linked-data context
+                                 "JSON": plain summary object { result_time, models: [{ name, location, observations: [{ timestamp, risk }] }] }
+    Returns: 200 with risk classifications per model per forecast timestamp
+             403 if OFFLINE_DEPLOYMENT is disabled
+             400 if any model UUID does not exist or weather service call fails
     """
-
-    if formatting == "JSON":
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_IMPLEMENTED,
-            detail="Error, the JSON format has yet to be implemented",
-        )
 
     weather_data = fetch_weather_service_forecast_weather_data(
         latitude=latitude,
@@ -380,7 +380,7 @@ def risk_index_forecast_wd_offline(
     }
 
     calculation_results = calculate_risk_index_forecast_wd(
-        parcel=synthetic_parcel, pest_models=pest_models_db, df=weather_data
+        parcel=synthetic_parcel, pest_models=pest_models_db, df=weather_data, formatting=formatting
     )
 
     return calculation_results

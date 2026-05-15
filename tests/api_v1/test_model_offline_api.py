@@ -33,9 +33,20 @@ SAMPLE_WEATHER_DF = pd.DataFrame([{
     "precipitation": 1.5,
 }])
 
-SAMPLE_RESULT = {
+SAMPLE_RESULT_JSONLD = {
     "@context": {},
     "@graph": [{"@id": "urn:openagri:pestInfectationRisk:abc", "@type": ["ObservationCollection"]}],
+}
+
+SAMPLE_RESULT_JSON = {
+    "result_time": "2024-06-01T10:00:00",
+    "models": [
+        {
+            "name": "TestPest",
+            "location": {"lat": 45.0, "lon": 14.0},
+            "observations": [{"timestamp": "2024-06-01T12:00:00", "risk": "Low"}],
+        }
+    ],
 }
 
 
@@ -75,7 +86,7 @@ class TestOfflineRiskIndexForecast:
         )
         mocker.patch(
             f"{ENDPOINT_MODULE}.calculate_risk_index_forecast_wd",
-            return_value=SAMPLE_RESULT,
+            return_value=SAMPLE_RESULT_JSONLD,
         )
 
         r = client.get(OFFLINE_URL, params={"latitude": 45.0, "longitude": 14.0})
@@ -85,16 +96,24 @@ class TestOfflineRiskIndexForecast:
         assert "@context" in body
         assert "@graph" in body
 
-    def test_json_format_not_implemented(self, client: TestClient, mocker):
+    def test_json_format_returns_plain_dict(self, client: TestClient, mock_db_session: MagicMock, mocker):
         mocker.patch(f"{ENDPOINT_MODULE}.crud.pest_model.get", return_value=_make_pest_model())
         mocker.patch(
             f"{ENDPOINT_MODULE}.fetch_weather_service_forecast_weather_data",
             return_value=SAMPLE_WEATHER_DF,
         )
+        mocker.patch(
+            f"{ENDPOINT_MODULE}.calculate_risk_index_forecast_wd",
+            return_value=SAMPLE_RESULT_JSON,
+        )
 
         r = client.get(OFFLINE_URL, params={"latitude": 45.0, "longitude": 14.0, "formatting": "JSON"})
 
-        assert r.status_code == 501
+        assert r.status_code == 200
+        body = r.json()
+        assert "models" in body
+        assert "result_time" in body
+        assert "@context" not in body
 
     def test_blocked_when_flag_false(self, mock_db_session: MagicMock, monkeypatch):
         monkeypatch.setattr(settings, "OFFLINE_DEPLOYMENT", False)
@@ -140,7 +159,7 @@ class TestOfflineRiskIndexForecast:
         mocker.patch(f"{ENDPOINT_MODULE}.crud.pest_model.get", return_value=_make_pest_model())
         mocker.patch(
             f"{ENDPOINT_MODULE}.calculate_risk_index_forecast_wd",
-            return_value=SAMPLE_RESULT,
+            return_value=SAMPLE_RESULT_JSONLD,
         )
 
         client.get(OFFLINE_URL, params={"latitude": 45.0, "longitude": 14.0})
