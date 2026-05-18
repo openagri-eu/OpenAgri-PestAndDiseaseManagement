@@ -81,6 +81,12 @@ def fetch_weather_data(
             detail="Error, GK returning 404, Weather Data API missing."
         )
 
+    if not response.ok:
+        raise HTTPException(
+            status_code=400,
+            detail="Weather service error: {}".format(response.status_code)
+        )
+
     return response.json()
 
 
@@ -118,6 +124,12 @@ def fetch_weather_service_forecast_weather_data(
         raise HTTPException(
             status_code=400,
             detail="Error, GK returning 404, Weather Data API missing."
+        )
+
+    if not response.ok:
+        raise HTTPException(
+            status_code=400,
+            detail="Weather service error: {}".format(response.status_code)
         )
 
     return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
@@ -161,6 +173,12 @@ def fetch_weather_service_forecast_weather_data_offline(
             detail="Error, weather service returning 404, endpoint missing."
         )
 
+    if not response.ok:
+        raise HTTPException(
+            status_code=400,
+            detail="Weather service error: {}".format(response.status_code)
+        )
+
     return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
 
 
@@ -168,6 +186,11 @@ def convert_weather_service_forecast_weather_data_to_dataframe(
     json_data: list
 ):
     df = pd.json_normalize(json_data)
+    if df.empty or 'timestamp' not in df.columns:
+        raise HTTPException(
+            status_code=400,
+            detail="Weather service returned no forecast data"
+        )
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df_pivoted = df.pivot(index='timestamp', columns='measurement_type', values='value')
     df_pivoted.columns.name = None
