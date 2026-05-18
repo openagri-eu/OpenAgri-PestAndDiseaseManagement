@@ -50,10 +50,13 @@ class Settings(BaseSettings):
     # Gatekeeper info
     USING_GATEKEEPER: bool
     GATEKEEPER_BASE_URL: Optional[AnyHttpUrl] = None
-    GATEKEEPER_USERNAME: str
-    GATEKEEPER_PASSWORD: str
-    SERVICE_NAME: str
+    GATEKEEPER_USERNAME: Optional[str] = None
+    GATEKEEPER_PASSWORD: Optional[str] = None
+    SERVICE_NAME: Optional[str] = None
     LOGGING: str
+
+    OFFLINE_DEPLOYMENT: bool = False
+    WEATHER_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
 
     OPEN_METEO_MAX_PAST_DAYS: int = 92
     OPEN_METEO_MIN_PAST_DAYS: int = 0

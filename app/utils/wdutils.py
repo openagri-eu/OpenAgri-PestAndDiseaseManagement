@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from typing import Optional
 
 import pandas
 import requests
@@ -86,15 +87,16 @@ def fetch_weather_data(
 def fetch_weather_service_forecast_weather_data(
     latitude: float,
     longitude: float,
-    access_token: str,
+    access_token: Optional[str] = None,
 ):
+    headers = {"Content-Type": "application/json"}
+    if access_token:
+        headers["Authorization"] = "Bearer {}".format(access_token)
+
     try:
         response = requests.get(
             url=WEATHER_DATA_API_CALL_URL + "/api/data/forecast5/",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer {}".format(access_token)
-            },
+            headers=headers,
             params={
                 "lat": latitude,
                 "lon": longitude
@@ -120,6 +122,48 @@ def fetch_weather_service_forecast_weather_data(
 
     return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
 
+def fetch_weather_service_forecast_weather_data_offline(
+    latitude: float,
+    longitude: float,
+):
+    if settings.WEATHER_SERVICE_BASE_URL is None:
+        raise HTTPException(
+            status_code=500,
+            detail="WEATHER_SERVICE_BASE_URL is not configured for offline deployment."
+        )
+
+    url = str(settings.WEATHER_SERVICE_BASE_URL).strip("/") + "/api/data/forecast5"
+
+    try:
+        response = requests.get(
+            url=url,
+            headers={"Content-Type": "application/json"},
+            params={
+                "lat": latitude,
+                "lon": longitude
+            }
+        )
+    except RequestException:
+        raise HTTPException(
+            status_code=400,
+            detail="Error during direct weather service call"
+        )
+
+    if response.status_code == 400:
+        raise HTTPException(
+            status_code=400,
+            detail="Error during weather data api call, original error: {}".format(response.reason)
+        )
+
+    if response.status_code == 404:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, weather service returning 404, endpoint missing."
+        )
+
+    return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
+
+
 def convert_weather_service_forecast_weather_data_to_dataframe(
     json_data: list
 ):
@@ -134,7 +178,8 @@ def convert_weather_service_forecast_weather_data_to_dataframe(
 def calculate_risk_index_forecast_wd(
     df: pandas.DataFrame,
     parcel,
-    pest_models: list
+    pest_models: list,
+    formatting: str = "JSON-LD",
 ):
     reverse_dict = {v: k for k, v in openweathermap_friendly_variables.items()}
     df.rename(columns=reverse_dict, inplace=True)
@@ -167,6 +212,31 @@ def calculate_risk_index_forecast_wd(
             ]
 
         df["{}".format(pm.name)] = risks_for_current_pm
+
+    if formatting == "JSON":
+        models = []
+        for pm in pest_models:
+            observations = [
+                {
+                    "timestamp": "{}".format(str(date).replace(" ", "T")),
+                    "risk": "{}".format(risk),
+                }
+                for date, risk in zip(df["timestamp"], df["{}".format(pm.name)])
+            ]
+            models.append(
+                {
+                    "name": pm.name,
+                    "location": {
+                        "lat": parcel["location"]["lat"],
+                        "lon": parcel["location"]["long"],
+                    },
+                    "observations": observations,
+                }
+            )
+        return {
+            "result_time": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "models": models,
+        }
 
     context = utils.context
 

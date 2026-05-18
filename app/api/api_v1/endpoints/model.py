@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,6 +23,7 @@ from utils import (
     fetch_forecast_data_for_parcel,
     calculate_forecast_risk_index,
     fetch_weather_service_forecast_weather_data,
+    fetch_weather_service_forecast_weather_data_offline,
     openweathermap_friendly_variables,
     calculate_risk_index_forecast_wd
 )
@@ -287,14 +289,17 @@ def risk_index_forecast_wd(
     formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
 ):
     """
-    Calculates risk index forecast using weather data obtained from the weather service
-    """
+    Calculates pest risk index forecast for a parcel using weather service data via gatekeeper.
+    Gatekeeper only — returns 403 if USING_GATEKEEPER is disabled.
 
-    if formatting == "JSON":
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_IMPLEMENTED,
-            detail="Error, the JSON format has yet to be implemented",
-        )
+    Path:    model_ids         — comma-separated pest model UUIDs
+    Query:   parcel_id         — UUID of the parcel to fetch location from
+             formatting        — "JSON-LD" (default): ObservationCollection graph with full linked-data context
+                                 "JSON": plain summary object { result_time, models: [{ name, location, observations: [{ timestamp, risk }] }] }
+    Returns: 200 with risk classifications per model per forecast timestamp
+             403 if USING_GATEKEEPER is disabled
+             400 if parcel does not exist, any model UUID does not exist, or weather service call fails
+    """
 
     parcel_fc = fetch_parcel_by_id(access_token=access_token, parcel_id=parcel_id)
 
@@ -326,7 +331,58 @@ def risk_index_forecast_wd(
         pest_models_db.append(pest_model_db)
 
     calculation_results = calculate_risk_index_forecast_wd(
-        parcel=parcel_fc, pest_models=pest_models_db, df=weather_data
+        parcel=parcel_fc, pest_models=pest_models_db, df=weather_data, formatting=formatting
+    )
+
+    return calculation_results
+
+
+@router.get("/{model_ids}/risk-index/forecast/weather-service/offline/", dependencies=[Depends(deps.is_offline_deployment)])
+def risk_index_forecast_wd_offline(
+    latitude: float,
+    longitude: float,
+    model_ids: DatasetIds = Depends(list_path_param),
+    db: Session = Depends(deps.get_db),
+    formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
+):
+    """
+    Calculates pest risk index forecast for the given location using weather service data,
+    without requiring a gatekeeper instance or access token.
+    Offline-deployment only — returns 403 if OFFLINE_DEPLOYMENT is not enabled.
+
+    Path:    model_ids         — comma-separated pest model UUIDs
+    Query:   latitude          — WGS-84 latitude
+             longitude         — WGS-84 longitude
+             formatting        — "JSON-LD" (default): ObservationCollection graph with full linked-data context
+                                 "JSON": plain summary object { result_time, models: [{ name, location, observations: [{ timestamp, risk }] }] }
+    Returns: 200 with risk classifications per model per forecast timestamp
+             403 if OFFLINE_DEPLOYMENT is disabled
+             400 if any model UUID does not exist or weather service call fails
+             500 if WEATHER_SERVICE_BASE_URL is not configured
+    """
+
+    weather_data = fetch_weather_service_forecast_weather_data_offline(
+        latitude=latitude,
+        longitude=longitude,
+    )
+
+    pest_models_db = []
+    for pest_id in model_ids.ids:
+        pest_model_db = crud.pest_model.get(db=db, id=pest_id)
+        if not pest_model_db:
+            raise HTTPException(
+                status_code=400,
+                detail="Error, model with ID {} does not exist".format(pest_id),
+            )
+        pest_models_db.append(pest_model_db)
+
+    synthetic_parcel = {
+        "@id": "urn:openagri:offline:{}".format(uuid.uuid4()),
+        "location": {"lat": latitude, "long": longitude},
+    }
+
+    calculation_results = calculate_risk_index_forecast_wd(
+        parcel=synthetic_parcel, pest_models=pest_models_db, df=weather_data, formatting=formatting
     )
 
     return calculation_results
