@@ -22,11 +22,6 @@ from utils.fuzzy_risk import (
     _trapezoid,
     _definition_to_rules,
 )
-from utils.fuzzy_config import (
-    RISK_THRESHOLD_CRITICAL,
-    RISK_THRESHOLD_HIGH,
-    RISK_THRESHOLD_MODERATE,
-)
 
 WEATHER_XLSX = Path("other/weather_data.xlsx")
 

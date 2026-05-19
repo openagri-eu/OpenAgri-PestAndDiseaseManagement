@@ -24,7 +24,6 @@ from utils import (
     calculate_forecast_risk_index,
     fetch_weather_service_forecast_weather_data,
     fetch_weather_service_history_weather_data_offline,
-    openweathermap_friendly_variables,
     calculate_risk_index_forecast_wd
 )
 
@@ -255,7 +254,7 @@ def calculate_risk_index_including_forecast(
     if len(hourly_fields) == 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Pest models don't have any conditions that risk index can be calculated against"
+            detail="Pest models don't have any conditions that risk index can be calculated against"
         )
 
     weather_data = fetch_forecast_data_for_parcel(

@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from app.api.api_v1.endpoints.parcel import router as parcel_router
 from api import deps

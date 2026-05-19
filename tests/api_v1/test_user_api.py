@@ -9,7 +9,6 @@ import requests
 from app.api.api_v1.endpoints.user import router as user_router
 from api import deps
 from models import User
-from schemas import UserMe
 
 
 @pytest.fixture
@@ -65,7 +64,7 @@ class TestRegister:
 
     SETTINGS_PATCH_TARGET = "app.api.api_v1.endpoints.user.settings"
     CRUD_USER_PATCH_TARGET = "app.api.api_v1.endpoints.user.user"
-    REQUESTS_PATCH_TARGET = "app.api.api_v1.endpoints.user.requests"
+    REQUESTS_PATCH_TARGET = "utils.gatekeeper_client.requests"
 
     def test_register_success_no_gatekeeper(
             self,
@@ -116,7 +115,7 @@ class TestRegister:
         assert response.json() == {"message": "You have successfully registered!"}
 
         mock_requests_post.assert_called_with(
-            url="http://mock-gatekeeper.com/api/register/",
+            "http://mock-gatekeeper.com/api/register/",
             headers={"Content-Type": "application/json"},
             json={
                 "username": "newuser@example.com",
@@ -180,7 +179,7 @@ class TestRegister:
         response = client.post("/register/", json=valid_user_payload)
 
         assert response.status_code == 400
-        assert response.json()["detail"] == "Error, can't connect to gatekeeper instance."
+        assert "Error, can't connect to gatekeeper instance" in response.json()["detail"]
 
     def test_register_fail_gatekeeper_rejects_user(
             self,
