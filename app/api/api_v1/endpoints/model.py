@@ -23,7 +23,7 @@ from utils import (
     fetch_forecast_data_for_parcel,
     calculate_forecast_risk_index,
     fetch_weather_service_forecast_weather_data,
-    fetch_weather_service_forecast_weather_data_offline,
+    fetch_weather_service_history_weather_data_offline,
     openweathermap_friendly_variables,
     calculate_risk_index_forecast_wd
 )
@@ -341,32 +341,36 @@ def risk_index_forecast_wd(
 def risk_index_forecast_wd_offline(
     latitude: float,
     longitude: float,
+    past_days: int = 30,
     model_ids: DatasetIds = Depends(list_path_param),
     db: Session = Depends(deps.get_db),
     formatting: Literal["JSON", "JSON-LD"] = "JSON-LD",
 ):
     """
-    Calculates pest risk index forecast for the given location using weather service data,
-    without requiring a gatekeeper instance or access token.
+    Calculates pest risk index for the given location using historical weather data
+    from the weather service, without requiring a gatekeeper instance or access token.
     Offline-deployment only — returns 403 if OFFLINE_DEPLOYMENT is not enabled.
 
     Path:    model_ids         — comma-separated pest model UUIDs
     Query:   latitude          — WGS-84 latitude
              longitude         — WGS-84 longitude
+             past_days         — days of history to fetch (1–92, default 30)
              formatting        — "JSON-LD" (default): ObservationCollection graph with full linked-data context
                                  "JSON": plain summary object { result_time, models: [{ name, location, observations: [{ timestamp, risk }] }] }
-    Returns: 200 with risk classifications per model per forecast timestamp
+    Returns: 200 with risk classifications per model per hour in the requested window
              403 if OFFLINE_DEPLOYMENT is disabled
-             400 if any model UUID does not exist or weather service call fails
+             400 if past_days out of range, any model UUID does not exist, or weather service call fails
              500 if WEATHER_SERVICE_BASE_URL is not configured
     """
 
-    weather_data = fetch_weather_service_forecast_weather_data_offline(
-        latitude=latitude,
-        longitude=longitude,
-    )
+    if past_days < 1 or past_days > settings.OPEN_METEO_MAX_PAST_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail="Error, past_days must be between 1 and {}".format(settings.OPEN_METEO_MAX_PAST_DAYS),
+        )
 
     pest_models_db = []
+    variables_for_weather_data_call = []
     for pest_id in model_ids.ids:
         pest_model_db = crud.pest_model.get(db=db, id=pest_id)
         if not pest_model_db:
@@ -375,6 +379,36 @@ def risk_index_forecast_wd_offline(
                 detail="Error, model with ID {} does not exist".format(pest_id),
             )
         pest_models_db.append(pest_model_db)
+
+        unit_names = list(set(
+            condition.unit.name
+            for rule in pest_model_db.rules
+            for condition in rule.conditions
+        ))
+        variables_for_weather_data_call += unit_names
+
+    hourly_fields = list(set(
+        openmeteo_friendly_variables[name]
+        for name in variables_for_weather_data_call
+        if name in openmeteo_friendly_variables
+    ))
+
+    if not hourly_fields:
+        raise HTTPException(
+            status_code=400,
+            detail="Pest models have no conditions mappable to weather variables",
+        )
+
+    end_date = datetime.date.today()
+    start_date = end_date - datetime.timedelta(days=past_days)
+
+    weather_data = fetch_weather_service_history_weather_data_offline(
+        latitude=latitude,
+        longitude=longitude,
+        start_date=start_date,
+        end_date=end_date,
+        variables=hourly_fields,
+    )
 
     synthetic_parcel = {
         "@id": "urn:openagri:offline:{}".format(uuid.uuid4()),

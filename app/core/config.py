@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     WEATHER_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
 
     OPEN_METEO_MAX_PAST_DAYS: int = 92
-    OPEN_METEO_MIN_PAST_DAYS: int = 0
+    OPEN_METEO_MIN_PAST_DAYS: int = 1
     OPEN_METEO_MIN_FORECAST_DAYS: int = 1
     OPEN_METEO_MAX_FORECAST_DAYS: int = 16
 

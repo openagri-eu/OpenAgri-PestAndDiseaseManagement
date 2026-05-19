@@ -134,9 +134,13 @@ def fetch_weather_service_forecast_weather_data(
 
     return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
 
-def fetch_weather_service_forecast_weather_data_offline(
+
+def fetch_weather_service_history_weather_data_offline(
     latitude: float,
     longitude: float,
+    start_date,
+    end_date,
+    variables: list,
 ):
     if settings.WEATHER_SERVICE_BASE_URL is None:
         raise HTTPException(
@@ -144,15 +148,19 @@ def fetch_weather_service_forecast_weather_data_offline(
             detail="WEATHER_SERVICE_BASE_URL is not configured for offline deployment."
         )
 
-    url = str(settings.WEATHER_SERVICE_BASE_URL).strip("/") + "/api/data/forecast5"
+    url = str(settings.WEATHER_SERVICE_BASE_URL).strip("/") + "/api/v1/history/hourly/"
 
     try:
-        response = requests.get(
+        response = requests.post(
             url=url,
             headers={"Content-Type": "application/json"},
-            params={
+            json={
                 "lat": latitude,
-                "lon": longitude
+                "lon": longitude,
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat(),
+                "variables": variables,
+                "radius_km": 10
             }
         )
     except RequestException:
@@ -164,7 +172,7 @@ def fetch_weather_service_forecast_weather_data_offline(
     if response.status_code == 400:
         raise HTTPException(
             status_code=400,
-            detail="Error during weather data api call, original error: {}".format(response.reason)
+            detail="Error during weather history api call, original error: {}".format(response.reason)
         )
 
     if response.status_code == 404:
@@ -179,23 +187,29 @@ def fetch_weather_service_forecast_weather_data_offline(
             detail="Weather service error: {}".format(response.status_code)
         )
 
-    return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
+    return convert_weather_service_history_weather_data_to_dataframe(response.json())
 
 
-def convert_weather_service_forecast_weather_data_to_dataframe(
-    json_data: list
-):
-    df = pd.json_normalize(json_data)
-    if df.empty or 'timestamp' not in df.columns:
+def convert_weather_service_history_weather_data_to_dataframe(response_json: dict):
+    openmeteo_to_openagri = {v: k for k, v in openmeteo_friendly_variables.items()}
+    rows = []
+    for obs in response_json.get("data", []):
+        row = {"timestamp": obs["timestamp"]}
+        for var, val in obs.get("values", {}).items():
+            openagri_name = openmeteo_to_openagri.get(var)
+            if openagri_name:
+                row[openagri_name] = val
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    if df.empty or "timestamp" not in df.columns:
         raise HTTPException(
             status_code=400,
-            detail="Weather service returned no forecast data"
+            detail="Weather service returned no history data"
         )
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df_pivoted = df.pivot(index='timestamp', columns='measurement_type', values='value')
-    df_pivoted.columns.name = None
-    df_pivoted.reset_index(inplace=True)
-    return df_pivoted
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    return df
+
 
 
 def calculate_risk_index_forecast_wd(
@@ -207,8 +221,13 @@ def calculate_risk_index_forecast_wd(
     reverse_dict = {v: k for k, v in openweathermap_friendly_variables.items()}
     df.rename(columns=reverse_dict, inplace=True)
 
-    valid_columns = df.columns.intersection(openweathermap_friendly_variables.keys())
-    df = df[valid_columns].rename(columns=openweathermap_friendly_variables)
+    owm_valid = df.columns.intersection(openweathermap_friendly_variables.keys())
+    df_owm = df[owm_valid].rename(columns=openweathermap_friendly_variables)
+
+    owm_covered_openagri = set(openweathermap_friendly_variables.values())
+    extra_openagri = set(openmeteo_friendly_variables.keys()) - owm_covered_openagri
+    extra_cols = df.columns.intersection(extra_openagri)
+    df = pd.concat([df_owm, df[extra_cols]], axis=1)
 
     for pm in pest_models:
         risks_for_current_pm = ["Low"] * df.shape[0]
