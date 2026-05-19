@@ -3,18 +3,18 @@ import uuid
 from typing import Optional
 
 import pandas
-import requests
 from fastapi import HTTPException
-from requests import RequestException
 
 import utils
 
 from core import settings
 from enum import Enum
+from utils.gatekeeper_client import GatekeeperClient
+from utils.weather_service_client import WeatherServiceClient
 
 import pandas as pd
 
-WEATHER_DATA_API_CALL_URL = str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/proxy/weather_data"
+# WEATHER_DATA_API_CALL_URL = str(settings.GATEKEEPER_BASE_URL).strip("/") + "/api/proxy/weather_data"
 
 class TimeUnit(Enum):
     HOURLY = "hourly"
@@ -50,44 +50,17 @@ def fetch_weather_data(
         radius_km: int = 10,
         how_often: TimeUnit = TimeUnit.DAILY
 ) -> dict:
-    try:
-        response = requests.post(
-            url=WEATHER_DATA_API_CALL_URL + "/api/v1/history/{}/".format(how_often.value),
-            headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(access_token)},
-            json={
-                "lat": latitude,
-                "lon": longitude,
-                "start": start_date.isoformat(),
-                "end": end_date.isoformat(),
-                "variables": variables,
-                "radius_km": radius_km
-            }
-        )
-    except RequestException:
-        raise HTTPException(
-            status_code=400,
-            detail="Error during proxy call via gk"
-        )
-
-    if response.status_code == 400:
-        raise HTTPException(
-            status_code=400,
-            detail="Error during weather data api call, original error: {}".format(response.reason)
-        )
-
-    if response.status_code == 404:
-        raise HTTPException(
-            status_code=400,
-            detail="Error, GK returning 404, Weather Data API missing."
-        )
-
-    if not response.ok:
-        raise HTTPException(
-            status_code=400,
-            detail="Weather service error: {}".format(response.status_code)
-        )
-
-    return response.json()
+    client = GatekeeperClient(str(settings.GATEKEEPER_BASE_URL))
+    return client.get_weather_history(
+        access_token=access_token,
+        lat=latitude,
+        lon=longitude,
+        start_date=start_date,
+        end_date=end_date,
+        variables=variables,
+        radius_km=radius_km,
+        how_often=how_often.value,
+    )
 
 
 def fetch_weather_service_forecast_weather_data(
@@ -95,44 +68,9 @@ def fetch_weather_service_forecast_weather_data(
     longitude: float,
     access_token: Optional[str] = None,
 ):
-    headers = {"Content-Type": "application/json"}
-    if access_token:
-        headers["Authorization"] = "Bearer {}".format(access_token)
-
-    try:
-        response = requests.get(
-            url=WEATHER_DATA_API_CALL_URL + "/api/data/forecast5/",
-            headers=headers,
-            params={
-                "lat": latitude,
-                "lon": longitude
-            }
-        )
-    except RequestException:
-        raise HTTPException(
-            status_code=400,
-            detail="Error during proxy call via gk"
-        )
-
-    if response.status_code == 400:
-        raise HTTPException(
-            status_code=400,
-            detail="Error during weather data api call, original error: {}".format(response.reason)
-        )
-
-    if response.status_code == 404:
-        raise HTTPException(
-            status_code=400,
-            detail="Error, GK returning 404, Weather Data API missing."
-        )
-
-    if not response.ok:
-        raise HTTPException(
-            status_code=400,
-            detail="Weather service error: {}".format(response.status_code)
-        )
-
-    return convert_weather_service_forecast_weather_data_to_dataframe(response.json())
+    client = GatekeeperClient(str(settings.GATEKEEPER_BASE_URL))
+    raw = client.get_weather_forecast(access_token=access_token, lat=latitude, lon=longitude)
+    return convert_weather_service_forecast_weather_data_to_dataframe(raw)
 
 
 def fetch_weather_service_history_weather_data_offline(
@@ -147,47 +85,15 @@ def fetch_weather_service_history_weather_data_offline(
             status_code=500,
             detail="WEATHER_SERVICE_BASE_URL is not configured for offline deployment."
         )
-
-    url = str(settings.WEATHER_SERVICE_BASE_URL).strip("/") + "/api/v1/history/hourly/"
-
-    try:
-        response = requests.post(
-            url=url,
-            headers={"Content-Type": "application/json"},
-            json={
-                "lat": latitude,
-                "lon": longitude,
-                "start": start_date.isoformat(),
-                "end": end_date.isoformat(),
-                "variables": variables,
-                "radius_km": 10
-            }
-        )
-    except RequestException:
-        raise HTTPException(
-            status_code=400,
-            detail="Error during direct weather service call"
-        )
-
-    if response.status_code == 400:
-        raise HTTPException(
-            status_code=400,
-            detail="Error during weather history api call, original error: {}".format(response.reason)
-        )
-
-    if response.status_code == 404:
-        raise HTTPException(
-            status_code=400,
-            detail="Error, weather service returning 404, endpoint missing."
-        )
-
-    if not response.ok:
-        raise HTTPException(
-            status_code=400,
-            detail="Weather service error: {}".format(response.status_code)
-        )
-
-    return convert_weather_service_history_weather_data_to_dataframe(response.json())
+    client = WeatherServiceClient(str(settings.WEATHER_SERVICE_BASE_URL))
+    raw = client.get_hourly_history(
+        lat=latitude,
+        lon=longitude,
+        start_date=start_date,
+        end_date=end_date,
+        variables=variables,
+    )
+    return convert_weather_service_history_weather_data_to_dataframe(raw)
 
 
 def convert_weather_service_history_weather_data_to_dataframe(response_json: dict):
@@ -210,6 +116,19 @@ def convert_weather_service_history_weather_data_to_dataframe(response_json: dic
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     return df
 
+
+def convert_weather_service_forecast_weather_data_to_dataframe(json_data: list):
+    df = pd.json_normalize(json_data)
+    if df.empty or "timestamp" not in df.columns:
+        raise HTTPException(
+            status_code=400,
+            detail="Weather service returned no forecast data"
+        )
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df_pivoted = df.pivot(index="timestamp", columns="measurement_type", values="value")
+    df_pivoted.columns.name = None
+    df_pivoted.reset_index(inplace=True)
+    return df_pivoted
 
 
 def calculate_risk_index_forecast_wd(

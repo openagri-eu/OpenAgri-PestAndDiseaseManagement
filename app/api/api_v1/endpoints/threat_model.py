@@ -11,7 +11,7 @@ import crud
 from api import deps
 from schemas.threat_model import (
     ThreatModelCreate, ThreatModelUpdate, ThreatModelDB, ThreatModelDefinition,
-    BioParams, FuzzyRule, RiskLevel,
+    BioParams, FuzzyRule,
 )
 
 router = APIRouter()

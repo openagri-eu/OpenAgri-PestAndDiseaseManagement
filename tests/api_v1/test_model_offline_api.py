@@ -323,7 +323,7 @@ class TestFetchWeatherServiceHistoryOffline:
     def test_raises_400_on_request_exception(self, mocker):
         from utils.wdutils import fetch_weather_service_history_weather_data_offline
         from requests import RequestException
-        mocker.patch("utils.wdutils.requests.post", side_effect=RequestException())
+        mocker.patch("utils.weather_service_client.requests.post", side_effect=RequestException())
 
         with pytest.raises(HTTPException) as exc_info:
             fetch_weather_service_history_weather_data_offline(
@@ -336,7 +336,7 @@ class TestFetchWeatherServiceHistoryOffline:
 
     def test_raises_400_on_404(self, mocker):
         from utils.wdutils import fetch_weather_service_history_weather_data_offline
-        mock_post = mocker.patch("utils.wdutils.requests.post")
+        mock_post = mocker.patch("utils.weather_service_client.requests.post")
         mock_post.return_value.status_code = 404
 
         with pytest.raises(HTTPException) as exc_info:
@@ -351,7 +351,7 @@ class TestFetchWeatherServiceHistoryOffline:
 
     def test_raises_400_on_non_ok_response(self, mocker):
         from utils.wdutils import fetch_weather_service_history_weather_data_offline
-        mock_post = mocker.patch("utils.wdutils.requests.post")
+        mock_post = mocker.patch("utils.weather_service_client.requests.post")
         mock_post.return_value.status_code = 503
         mock_post.return_value.ok = False
 
@@ -366,7 +366,7 @@ class TestFetchWeatherServiceHistoryOffline:
 
     def test_happy_path_returns_dataframe(self, mocker):
         from utils.wdutils import fetch_weather_service_history_weather_data_offline
-        mock_post = mocker.patch("utils.wdutils.requests.post")
+        mock_post = mocker.patch("utils.weather_service_client.requests.post")
         mock_post.return_value.status_code = 200
         mock_post.return_value.ok = True
         mock_post.return_value.json.return_value = {
@@ -394,7 +394,7 @@ class TestFetchWeatherServiceHistoryOffline:
 
     def test_post_body_matches_hourly_query_schema(self, mocker):
         from utils.wdutils import fetch_weather_service_history_weather_data_offline
-        mock_post = mocker.patch("utils.wdutils.requests.post")
+        mock_post = mocker.patch("utils.weather_service_client.requests.post")
         mock_post.return_value.status_code = 200
         mock_post.return_value.ok = True
         mock_post.return_value.json.return_value = {
@@ -512,3 +512,124 @@ class TestConvertHistoryWeatherData:
 
         assert "some_unknown_variable" not in df.columns
         assert "atmospheric_temperature" in df.columns
+
+
+class TestWeatherServiceClient:
+
+    GOOD_HOURLY_RESPONSE = {
+        "location": {"lat": 45.0, "lon": 14.0},
+        "data": [{"timestamp": "2024-01-01T00:00:00", "values": {"temperature_2m": 20.0}}],
+        "source": "openmeteo",
+    }
+
+    def _mock_ok_post(self, mocker, body: dict):
+        mock = mocker.patch("utils.weather_service_client.requests.post")
+        mock.return_value.status_code = 200
+        mock.return_value.ok = True
+        mock.return_value.json.return_value = body
+        return mock
+
+    def _mock_ok_get(self, mocker, body: dict):
+        mock = mocker.patch("utils.weather_service_client.requests.get")
+        mock.return_value.status_code = 200
+        mock.return_value.ok = True
+        mock.return_value.json.return_value = body
+        return mock
+
+    def test_get_hourly_history_posts_to_correct_path(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        mock = self._mock_ok_post(mocker, self.GOOD_HOURLY_RESPONSE)
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        client.get_hourly_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m"])
+
+        url = mock.call_args.args[0] if mock.call_args.args else mock.call_args.kwargs.get("url", mock.call_args[0][0])
+        assert url == "http://weather-service:8000/api/v1/history/hourly/"
+
+    def test_get_hourly_history_sends_correct_body(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        mock = self._mock_ok_post(mocker, self.GOOD_HOURLY_RESPONSE)
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        client.get_hourly_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m"], radius_km=15)
+
+        body = mock.call_args.kwargs["json"]
+        assert body["lat"] == 45.0
+        assert body["lon"] == 14.0
+        assert body["start"] == "2024-01-01"
+        assert body["end"] == "2024-01-07"
+        assert body["variables"] == ["temperature_2m"]
+        assert body["radius_km"] == 15
+
+    def test_get_daily_history_posts_to_correct_path(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        daily_response = {
+            "location": {"lat": 45.0, "lon": 14.0},
+            "data": [{"date": "2024-01-01", "values": {"temperature_2m_max": 20.0}}],
+            "source": "openmeteo",
+        }
+        mock = self._mock_ok_post(mocker, daily_response)
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        client.get_daily_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m_max"])
+
+        url = mock.call_args.args[0] if mock.call_args.args else mock.call_args[0][0]
+        assert url == "http://weather-service:8000/api/v1/history/daily/"
+
+    def test_get_hourly_forecast_gets_correct_path(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        mock = self._mock_ok_get(mocker, self.GOOD_HOURLY_RESPONSE)
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        client.get_hourly_forecast(45.0, 14.0, days=3)
+
+        url = mock.call_args.args[0] if mock.call_args.args else mock.call_args[0][0]
+        assert url == "http://weather-service:8000/api/v1/forecast/hourly/"
+        params = mock.call_args.kwargs["params"]
+        assert params["days"] == 3
+
+    def test_raises_400_on_connection_error(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        from requests import RequestException
+        mocker.patch("utils.weather_service_client.requests.post", side_effect=RequestException())
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        with pytest.raises(HTTPException) as exc_info:
+            client.get_hourly_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m"])
+
+        assert exc_info.value.status_code == 400
+
+    def test_raises_400_on_404(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        mock = mocker.patch("utils.weather_service_client.requests.post")
+        mock.return_value.status_code = 404
+        mock.return_value.ok = False
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        with pytest.raises(HTTPException) as exc_info:
+            client.get_hourly_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m"])
+
+        assert exc_info.value.status_code == 400
+        assert "404" in exc_info.value.detail
+
+    def test_raises_400_on_non_ok(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        mock = mocker.patch("utils.weather_service_client.requests.post")
+        mock.return_value.status_code = 503
+        mock.return_value.ok = False
+
+        client = WeatherServiceClient("http://weather-service:8000")
+        with pytest.raises(HTTPException) as exc_info:
+            client.get_hourly_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m"])
+
+        assert exc_info.value.status_code == 400
+
+    def test_base_url_trailing_slash_stripped(self, mocker):
+        from utils.weather_service_client import WeatherServiceClient
+        mock = self._mock_ok_post(mocker, self.GOOD_HOURLY_RESPONSE)
+
+        client = WeatherServiceClient("http://weather-service:8000/")
+        client.get_hourly_history(45.0, 14.0, datetime.date(2024, 1, 1), datetime.date(2024, 1, 7), ["temperature_2m"])
+
+        url = mock.call_args.args[0] if mock.call_args.args else mock.call_args[0][0]
+        assert "//" not in url.replace("http://", "")
