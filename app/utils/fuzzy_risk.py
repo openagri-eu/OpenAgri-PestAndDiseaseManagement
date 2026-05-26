@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 import crud
 from schemas.threat_model import ThreatModelDB
-from utils.custom_schemas import context as OPENAGRI_CONTEXT
+from utils.constants import context as OPENAGRI_CONTEXT
 from utils.fuzzy_config import (
     FUZZY_TRANSITION_FRACTION,
     FUZZY_MIN_MU,

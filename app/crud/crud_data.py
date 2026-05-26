@@ -9,9 +9,6 @@ from schemas import CreateData, Temp
 
 class CrudData(CRUDBase[Data, CreateData, dict]):
 
-    def get_all(self, db: Session):
-        return db.query(Data).all()
-
     def batch_insert(self, db: Session, list_of_data: List[Temp], parcel_id: int) -> Optional[List[Data]]:
         data_model = [Data(**x.model_dump(), parcel_id=parcel_id) for x in list_of_data]
 

@@ -14,7 +14,6 @@ class CrudPestModel(CRUDBase[PestModel, CreatePestModel, UpdatePestModel]):
 
         pest_model_db = PestModel(name=obj_in.name, description=obj_in.description, geo_areas_of_application=obj_in.geo_areas_of_application)
 
-        # Attempt to create a pest model entity
         db.add(pest_model_db)
         try:
             db.commit()
@@ -23,10 +22,8 @@ class CrudPestModel(CRUDBase[PestModel, CreatePestModel, UpdatePestModel]):
             return None
         db.refresh(pest_model_db)
 
-        # Assemble the cultivations from the list
         cultivations = [Cultivation(name=x, pest_model_id=pest_model_db.id) for x in obj_in.cultivations]
 
-        # Attempt to create the cultivations and bind them to the previously created pest model entity
         db.add_all(cultivations)
         try:
             db.commit()
@@ -48,9 +45,6 @@ class CrudPestModel(CRUDBase[PestModel, CreatePestModel, UpdatePestModel]):
 
         return pest_model_db
 
-
-    def get_all(self, db: Session):
-        return db.query(PestModel).all()
 
 
 pest_model = CrudPestModel(PestModel)

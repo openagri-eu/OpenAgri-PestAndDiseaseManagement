@@ -67,7 +67,6 @@ def calculate_gdd_fc(
 
     lat, lon = fetch_parcel_lat_lon(parcel_fc)
 
-    # Now that we have a (lat,lon) pair, we can query the weather service for weather data
     weather_data = fetch_weather_data(
         latitude=lat,
         longitude=lon,
@@ -77,7 +76,6 @@ def calculate_gdd_fc(
         variables=["temperature_2m_max"]
     )
 
-    # Fetch the disease models from the DB
     disease_models_db = []
     for disease_id in model_ids.ids:
         disease_model_db = crud.disease.get(db=db, id=disease_id)
@@ -136,7 +134,6 @@ def calculate_risk_index_fc(
             detail="Parcel with ID:{} doesn't exist".format(parcel_id)
         )
 
-    # Fetch the pest models from the database AND fetch a unique list of the units they require
     variables_for_weather_data_call = []
     pest_models_db = []
     for pest_id in model_ids.ids:
@@ -149,7 +146,6 @@ def calculate_risk_index_fc(
 
         pest_models_db.append(pest_model_db)
 
-        # Appends the list of units
         list_of_values = list(set([condition.unit.name for rule in pest_model_db.rules for condition in rule.conditions]))
 
         variables_for_weather_data_call += list_of_values
@@ -158,7 +154,6 @@ def calculate_risk_index_fc(
 
     variables_for_weather_data_call_openmeteo = [openmeteo_friendly_variables[var_name] for var_name in variables_for_weather_data_call]
 
-    # Now that we have a (lat,lon) pair, we can query the weather service for weather data
     weather_data = fetch_weather_data(
         latitude=lat, longitude=lon, access_token=access_token, start_date=from_date, end_date=to_date,
         variables=variables_for_weather_data_call_openmeteo, how_often=TimeUnit.HOURLY
@@ -220,7 +215,6 @@ def calculate_risk_index_including_forecast(
             detail="Error, parcel with id {} doesn't exist".format(parcel_id),
         )
 
-    # Fetch the pest models from the database AND fetch a unique list of the units they require
     variables_for_weather_data_call = []
     pest_models_db = []
     for pest_id in model_ids.ids:
@@ -233,7 +227,6 @@ def calculate_risk_index_including_forecast(
 
         pest_models_db.append(pest_model_db)
 
-        # Appends the list of units
         list_of_values = list(
             set(
                 [
@@ -310,14 +303,12 @@ def risk_index_forecast_wd(
 
     lat, lon = fetch_parcel_lat_lon(parcel_fc)
 
-    # Now that we have a (lat,lon) pair, we can query the weather service for weather data
     weather_data = fetch_weather_service_forecast_weather_data(
         latitude=lat,
         longitude=lon,
         access_token=access_token
     )
 
-    # Fetch the pest models from the database
     pest_models_db = []
     for pest_id in model_ids.ids:
         pest_model_db = crud.pest_model.get(db=db, id=pest_id)

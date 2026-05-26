@@ -12,11 +12,6 @@ from schemas import CreateDisease, GDDIntervalInput, UpdateDiseaseModel
 
 class CrudDisease(CRUDBase[Disease, CreateDisease, dict]):
 
-    def get_all(self, db: Session):
-        response = db.query(Disease).all()
-
-        return response
-
     def get_by_name(self, db: Session, name: str) -> Disease:
         response = db.query(Disease).filter(Disease.name == name).first()
 

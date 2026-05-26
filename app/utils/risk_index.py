@@ -18,16 +18,62 @@ prob_values = {
     "high": 3
 }
 
+
+def _build_observation(timestamp: str, risk: str) -> dict:
+    return {
+        "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(uuid.uuid4()),
+        "@type": ["Observation", "PestInfestationRisk"],
+        "phenomenonTime": timestamp,
+        "hasSimpleResult": "{}".format(risk),
+    }
+
+
+def _build_graph_element(pm: PestModel, lat: float, lon: float, parcel_id, calculated_risks: list) -> dict:
+    return {
+        "@id": "urn:openagri:pestInfectationRisk:{}".format(uuid.uuid4()),
+        "@type": ["ObservationCollection"],
+        "description": "{} pest infectation risk forecast in x ".format(pm.name),
+        "observedProperty": {
+            "@id": "urn:openagri:pestInfectationRisk:op:{}".format(uuid.uuid4()),
+            "@type": ["ObservableProperty", "PestInfection"],
+            "name": "UNCINE pest infection",
+            "hasAgriPest": {
+                "@id": "urn:openagri:pest:UNCINE",
+                "@type": "AgriPest",
+                "name": "UNCINE",
+                "description": "Uncinula necator (syn. Erysiphe necator) is a fungus that causes powdery mildew of grape. It is a common pathogen of Vitis species, including the wine grape, Vitis vinifera",
+                "eppoConcept": "https://gd.eppo.int/taxon/UNCINE",
+            },
+        },
+        "madeBySensor": {
+            "@id": "urn:openagri:pestInfectationRisk:model:{}".format(uuid.uuid4()),
+            "@type": ["Sensor", "AIPestDetectionModel"],
+            "name": "AI pest detaction model xyz",
+        },
+        "hasFeatureOfInterest": {
+            "@id": "urn:openagri:pestInfectationRisk:foi:{}".format(uuid.uuid4()),
+            "@type": ["FeatureOfInterest", "Point"],
+            "long": "{}".format(lon),
+            "lat": "{}".format(lat),
+        },
+        "basedOnWeatherDataset": {
+            "@id": "urn:openagri:weatherDataset:{}".format(parcel_id),
+            "@type": "WeatherDataset",
+            "name": "parcel_name_tba",
+        },
+        "resultTime": "{}".format(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
+        "hasMember": calculated_risks,
+    }
+
+
 def calculate_risk_index_probability(db: Session, parcel: Parcel, pest_models: List[PestModel],
                                      from_date: datetime.date, to_date:datetime.date,
                                      parameter: Optional[str] = None):
-    # SQL query for the data
     data_db = crud.data.get_data_query_by_parcel_id_and_date_interval(db=db, parcel_id=parcel.id,
                                                                       date_from=from_date, date_to=to_date)
 
     df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
 
-    # Calculate the risks associated with each pest_model
     for pm in pest_models:
         risks_for_current_pm = ["Low"] * df.shape[0]
 
@@ -38,78 +84,24 @@ def calculate_risk_index_probability(db: Session, parcel: Parcel, pest_models: L
 
             df_with_risk = df.assign(risk=eval("lambda x: {}".format(final_str)))
 
-            # With this, only one rule should only ever fire for one singular date/time weather data point.
-            # If multiple rules turn up as valid (both are true), then the last one from the db is going to have its
-            # prob. value written as a final response for this pest model
             risks_for_current_pm = [rule.probability_value if x else y for x, y in zip(df_with_risk["risk"], risks_for_current_pm)]
 
         df["{}".format(pm.name)] = risks_for_current_pm
 
-    context = utils.context
-
     graph = []
-
     for pm in pest_models:
-
         calculated_risks = []
         for date, time, risk in zip(df["date"], df["time"], df["{}".format(pm.name)]):
-
             if parameter and risk != parameter:
                 continue
+            calculated_risks.append(_build_observation(
+                "{}".format(str(date).split(" ")[0] + "T" + str(time)), risk
+            ))
 
-            calculated_risks.append(
-                {
-                    "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(uuid.uuid4()),
-                    "@type": ["Observation", "PestInfestationRisk"],
-                    "phenomenonTime": "{}".format(str(date).split(" ")[0] + "T" + str(time)),
-                    "hasSimpleResult": "{}".format(risk)
-                }
-            )
+        graph.append(_build_graph_element(pm, parcel.latitude, parcel.longitude, parcel.id, calculated_risks))
 
-        graph_element = {
-            "@id": "urn:openagri:pestInfectationRisk:{}".format(uuid.uuid4()),
-            "@type": ["ObservationCollection"],
-            "description": "{} pest infectation risk forecast in x ".format(pm.name),
-            "observedProperty": {
-                "@id": "urn:openagri:pestInfectationRisk:op:{}".format(uuid.uuid4()),
-                "@type": ["ObservableProperty", "PestInfection"],
-                "name": "UNCINE pest infection",
-                "hasAgriPest": {
-                    "@id": "urn:openagri:pest:UNCINE",
-                    "@type": "AgriPest",
-                    "name": "UNCINE",
-                    "description": "Uncinula necator (syn. Erysiphe necator) is a fungus that causes powdery mildew of grape. It is a common pathogen of Vitis species, including the wine grape, Vitis vinifera",
-                    "eppoConcept": "https://gd.eppo.int/taxon/UNCINE"
-                }
-            },
-            "madeBySensor": {
-                "@id": "urn:openagri:pestInfectationRisk:model:{}".format(uuid.uuid4()),
-                "@type": ["Sensor", "AIPestDetectionModel"],
-                "name": "AI pest detaction model xyz"
-            },
-            "hasFeatureOfInterest": {
-                "@id": "urn:openagri:pestInfectationRisk:foi:{}".format(uuid.uuid4()),
-                "@type": ["FeatureOfInterest", "Point"],
-                "long": "{}".format(parcel.longitude),
-                "lat": "{}".format(parcel.latitude)
-            },
-            "basedOnWeatherDataset": {
-                "@id": "urn:openagri:weatherDataset:{}".format(parcel.id),
-                "@type": "WeatherDataset",
-                "name": "parcel_name_tba"
-            },
-            "resultTime": "{}".format(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
-            "hasMember": calculated_risks
-        }
+    return {"@context": utils.context, "@graph": graph}
 
-        graph.append(graph_element)
-
-    doc = {
-        "@context": context,
-        "@graph": graph
-    }
-
-    return doc
 
 def calculate_risk_index_probability_wd(
         parcel: dict,
@@ -125,15 +117,11 @@ def calculate_risk_index_probability_wd(
         calculated_risks = []
 
         for hour in weather_data["data"]:
-
             current_rule_risk_index = "low"
             for rule in pm.rules:
-
-                # Filter, if parameter set to "high", skip low and medium ones
                 if parameter and prob_values[rule.probability_value] < prob_values[parameter]:
                     continue
 
-                # Skip these since their calculation wouldn't meaningfully add to the current model limits
                 if rule.probability_value and prob_values[rule.probability_value] <= prob_values[current_rule_risk_index]:
                     continue
 
@@ -148,68 +136,15 @@ def calculate_risk_index_probability_wd(
                     current_rule_risk_index = rule.probability_value
 
             if not parameter:
-                calculated_risks.append(
-                    {
-                        "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(uuid.uuid4()),
-                        "@type": ["Observation", "PestInfestationRisk"],
-                        "phenomenonTime": "{}".format(hour["timestamp"]),
-                        "hasSimpleResult": "{}".format(current_rule_risk_index)
-                    }
-                )
+                calculated_risks.append(_build_observation(hour["timestamp"], current_rule_risk_index))
                 continue
 
             if parameter and prob_values[current_rule_risk_index] >= prob_values[parameter]:
-                calculated_risks.append(
-                    {
-                        "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(uuid.uuid4()),
-                        "@type": ["Observation", "PestInfestationRisk"],
-                        "phenomenonTime": "{}".format(hour["timestamp"]),
-                        "hasSimpleResult": "{}".format(current_rule_risk_index)
-                    }
-                )
-                continue
+                calculated_risks.append(_build_observation(hour["timestamp"], current_rule_risk_index))
 
-        graph_element = {
-            "@id": "urn:openagri:pestInfectationRisk:{}".format(uuid.uuid4()),
-            "@type": ["ObservationCollection"],
-            "description": "{} pest infectation risk forecast in x ".format(pm.name),
-            "observedProperty": {
-                "@id": "urn:openagri:pestInfectationRisk:op:{}".format(uuid.uuid4()),
-                "@type": ["ObservableProperty", "PestInfection"],
-                "name": "UNCINE pest infection",
-                "hasAgriPest": {
-                    "@id": "urn:openagri:pest:UNCINE",
-                    "@type": "AgriPest",
-                    "name": "UNCINE",
-                    "description": "Uncinula necator (syn. Erysiphe necator) is a fungus that causes powdery mildew of grape. It is a common pathogen of Vitis species, including the wine grape, Vitis vinifera",
-                    "eppoConcept": "https://gd.eppo.int/taxon/UNCINE"
-                }
-            },
-            "madeBySensor": {
-                "@id": "urn:openagri:pestInfectationRisk:model:{}".format(uuid.uuid4()),
-                "@type": ["Sensor", "AIPestDetectionModel"],
-                "name": "AI pest detaction model xyz"
-            },
-            "hasFeatureOfInterest": {
-                "@id": "urn:openagri:pestInfectationRisk:foi:{}".format(uuid.uuid4()),
-                "@type": ["FeatureOfInterest", "Point"],
-                "long": "{}".format(lon),
-                "lat": "{}".format(lat)
-            },
-            "basedOnWeatherDataset": {
-                "@id": "urn:openagri:weatherDataset:{}".format(parcel["@id"]),
-                "@type": "WeatherDataset",
-                "name": "parcel_name_tba"
-            },
-            "resultTime": "{}".format(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
-            "hasMember": calculated_risks
-        }
+        graph.append(_build_graph_element(pm, lat, lon, parcel["@id"], calculated_risks))
 
-        graph.append(graph_element)
-
-    doc = {"@context": utils.context, "@graph": graph}
-
-    return doc
+    return {"@context": utils.context, "@graph": graph}
 
 
 def calculate_forecast_risk_index(
@@ -246,65 +181,14 @@ def calculate_forecast_risk_index(
 
         weather_data["{}".format(pm.name)] = risks_for_current_pm
 
-    context = utils.context
-
     graph = []
-
     for pm in pest_models:
-
         calculated_risks = []
         for date, risk in zip(weather_data["date"], weather_data["{}".format(pm.name)]):
-            calculated_risks.append(
-                {
-                    "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(
-                        uuid.uuid4()
-                    ),
-                    "@type": ["Observation", "PestInfestationRisk"],
-                    "phenomenonTime": "{}".format(str(date).replace(" ", "T")),
-                    "hasSimpleResult": "{}".format(risk),
-                }
-            )
+            calculated_risks.append(_build_observation(
+                "{}".format(str(date).replace(" ", "T")), risk
+            ))
 
-        graph_element = {
-            "@id": "urn:openagri:pestInfectationRisk:{}".format(uuid.uuid4()),
-            "@type": ["ObservationCollection"],
-            "description": "{} pest infectation risk forecast in x ".format(pm.name),
-            "observedProperty": {
-                "@id": "urn:openagri:pestInfectationRisk:op:{}".format(uuid.uuid4()),
-                "@type": ["ObservableProperty", "PestInfection"],
-                "name": "UNCINE pest infection",
-                "hasAgriPest": {
-                    "@id": "urn:openagri:pest:UNCINE",
-                    "@type": "AgriPest",
-                    "name": "UNCINE",
-                    "description": "Uncinula necator (syn. Erysiphe necator) is a fungus that causes powdery mildew of grape. It is a common pathogen of Vitis species, including the wine grape, Vitis vinifera",
-                    "eppoConcept": "https://gd.eppo.int/taxon/UNCINE",
-                },
-            },
-            "madeBySensor": {
-                "@id": "urn:openagri:pestInfectationRisk:model:{}".format(uuid.uuid4()),
-                "@type": ["Sensor", "AIPestDetectionModel"],
-                "name": "AI pest detaction model xyz",
-            },
-            "hasFeatureOfInterest": {
-                "@id": "urn:openagri:pestInfectationRisk:foi:{}".format(uuid.uuid4()),
-                "@type": ["FeatureOfInterest", "Point"],
-                "long": "{}".format(parcel.longitude),
-                "lat": "{}".format(parcel.latitude),
-            },
-            "basedOnWeatherDataset": {
-                "@id": "urn:openagri:weatherDataset:{}".format(parcel.id),
-                "@type": "WeatherDataset",
-                "name": "parcel_name_tba",
-            },
-            "resultTime": "{}".format(
-                datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-            ),
-            "hasMember": calculated_risks,
-        }
+        graph.append(_build_graph_element(pm, parcel.latitude, parcel.longitude, parcel.id, calculated_risks))
 
-        graph.append(graph_element)
-
-    doc = {"@context": context, "@graph": graph}
-
-    return doc
+    return {"@context": utils.context, "@graph": graph}
