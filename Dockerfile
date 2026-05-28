@@ -40,6 +40,7 @@ COPY --from=builder /venv /venv
 COPY app/ app/
 COPY alembic/ alembic/
 COPY alembic.ini .
+COPY data/ data/
 COPY entrypoint.sh .
 
 RUN chmod +x entrypoint.sh
