@@ -27,20 +27,15 @@ class Settings(BaseSettings):
             environ.get("POSTGRES_PASSWORD"),
             environ.get("POSTGRES_HOST"),
             environ.get("POSTGRES_PORT"),
-            environ.get("POSTGRES_DB")
+            environ.get("POSTGRES_DB"),
         )
 
         return url
 
     PASSWORD_SCHEMA_OBJ: PasswordValidator = PasswordValidator()
-    PASSWORD_SCHEMA_OBJ \
-        .min(8) \
-        .max(100) \
-        .has().uppercase() \
-        .has().lowercase() \
-        .has().digits() \
-        .has().no().spaces() \
-
+    PASSWORD_SCHEMA_OBJ.min(8).max(
+        100
+    ).has().uppercase().has().lowercase().has().digits().has().no().spaces()
     ACCESS_TOKEN_EXPIRATION_TIME: int
     REFRESH_TOKEN_EXPIRATION_TIME: int
     JWT_KEY: str
@@ -66,6 +61,9 @@ class Settings(BaseSettings):
 
     # Month when cumulative GDD resets (1 = Jan for NH, 7 = Jul for SH)
     GDD_RESET_MONTH: int = 1
+
+    # agstack-pnd integration
+    USE_AGSTACK_PND: bool = False
 
 
 settings = Settings()
