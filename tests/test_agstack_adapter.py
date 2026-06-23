@@ -175,6 +175,62 @@ class TestThreatModelToDefinition:
         td = threatmodel_to_definition(tm)
         assert isinstance(td, ThreatDefinition)
 
+    def test_null_gates_become_inactive_sentinels(self):
+        tm = _fungal_tm(
+            definition={
+                "bio_params": {
+                    "t_base": 5.0,
+                    "t_lethal_min": None,
+                    "t_lethal_max": None,
+                    "min_streak": None,
+                    "min_wetness_hours_high": None,
+                    "min_wetness_hours_critical": None,
+                },
+                "fuzzy_rules": [
+                    {
+                        "hum_lo": 80,
+                        "hum_hi": 100,
+                        "temp_lo": 10,
+                        "temp_hi": 30,
+                        "rain_min": 0,
+                        "risk_level": "high",
+                        "type": "fungal",
+                    }
+                ],
+            }
+        )
+        bp = threatmodel_to_definition(tm).bio_params
+        assert bp.t_lethal_min <= -1e9 and bp.t_lethal_max >= 1e9
+        assert bp.min_streak == 1
+        assert bp.min_wetness_hours_critical == 0.0
+        assert bp.min_wetness_hours_high == 0.0
+
+    def test_set_gates_pass_through(self):
+        tm = _fungal_tm(
+            definition={
+                "bio_params": {"t_base": 5.0, "t_lethal_max": 35.0, "min_streak": 4},
+                "fuzzy_rules": [
+                    {
+                        "hum_lo": 80,
+                        "hum_hi": 100,
+                        "temp_lo": 10,
+                        "temp_hi": 30,
+                        "rain_min": 0,
+                        "risk_level": "high",
+                        "type": "fungal",
+                    }
+                ],
+            }
+        )
+        bp = threatmodel_to_definition(tm).bio_params
+        assert bp.t_lethal_max == 35.0
+        assert bp.min_streak == 4
+
+    def test_package_phenology_is_neutralised(self):
+        bp = threatmodel_to_definition(_fungal_tm()).bio_params
+        assert bp.pheno_lo <= -1e9 and bp.pheno_hi >= 1e9
+        assert bp.pheno_frac_lo is None and bp.pheno_frac_hi is None
+
     def test_bio_params_none_round_trips(self):
         tm = _fungal_tm(
             definition={

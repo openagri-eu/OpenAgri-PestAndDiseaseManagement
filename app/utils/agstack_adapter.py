@@ -89,12 +89,31 @@ def _crop_name(tm: Any) -> str:
     return getattr(tm, "crop_name", "")
 
 
-def _clean_bio_params(raw: dict) -> dict:
+_GATE_NEUTRAL: dict[str, Any] = {
+    "t_lethal_min": -1.0e9,
+    "t_lethal_max": 1.0e9,
+    "min_streak": 1,
+    "min_wetness_hours_critical": 0.0,
+    "min_wetness_hours_high": 0.0,
+}
+
+
+def _package_bio_params(raw: dict) -> dict:
+    raw = raw or {}
     cleaned: dict[str, Any] = {}
-    for key, value in (raw or {}).items():
+    for key, value in raw.items():
         if value is None:
             continue
         cleaned[_BIOPARAM_RENAME.get(key, key)] = value
+
+    for key, neutral in _GATE_NEUTRAL.items():
+        if raw.get(key) is None:
+            cleaned[key] = neutral
+
+    cleaned["pheno_lo"] = -1.0e9
+    cleaned["pheno_hi"] = 1.0e9
+    cleaned.pop("pheno_frac_lo", None)
+    cleaned.pop("pheno_frac_hi", None)
     return cleaned
 
 
@@ -135,7 +154,7 @@ def threatmodel_to_definition(tm: Any) -> ThreatDefinition:
             "common_name": tm.common_name,
             "crop": _crop_name(tm),
             "threat_type": _resolve_threat_type(tm, definition),
-            "bio_params": _clean_bio_params(definition.get("bio_params") or {}),
+            "bio_params": _package_bio_params(definition.get("bio_params") or {}),
             "fuzzy_rules": [
                 _clean_rule(r) for r in (definition.get("fuzzy_rules") or [])
             ],

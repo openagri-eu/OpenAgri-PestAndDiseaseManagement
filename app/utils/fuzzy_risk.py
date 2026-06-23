@@ -223,36 +223,9 @@ def membership_phenology(gdd_now: float, lo: float, hi: float) -> float:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def score_day(
-    weather_row: pd.Series,
-    rules_pest: list[dict],
-    pest_key: str,
-    pest_params: dict,
-) -> dict:
-    """Mamdani fuzzy inference for one (pest, day) pair.
-
-    rules_pest: list of dicts with hum_lo/hi, temp_lo/hi, rain_min, risk_score, risk
-    pest_key:   scientific_name — used for pathogen genus detection
-    pest_params: bio_params dict from ThreatModel.definition
-    """
-    t_raw = float(weather_row["temp_avg"])
-    t_lethal_max_p = pest_params.get("t_lethal_max")
-    t_lethal_min_p = pest_params.get("t_lethal_min")
-
-    if t_lethal_max_p is not None and t_raw > float(t_lethal_max_p):
-        return {
-            "score": 0.0,
-            "risk_class": "Low",
-            "detail": f"T={t_raw:.1f}°C > t_lethal_max={t_lethal_max_p}°C",
-        }
-    if t_lethal_min_p is not None and t_raw < float(t_lethal_min_p):
-        return {
-            "score": 0.0,
-            "risk_class": "Low",
-            "detail": f"T={t_raw:.1f}°C < t_lethal_min={t_lethal_min_p}°C",
-        }
-
-    # Phenological gating
+def _phenology_mu(
+    weather_row: pd.Series, pest_params: dict
+) -> tuple[float, float, float | None, float | None]:
     pheno_lo = pest_params.get("pheno_lo")
     pheno_hi = pest_params.get("pheno_hi")
     frac_lo = pest_params.get("pheno_frac_lo")
@@ -272,22 +245,58 @@ def score_day(
         lo_pheno = pheno_lo
         hi_pheno = pheno_hi
     else:
-        lo_pheno = hi_pheno = None
+        return 1.0, gdd_now, None, None
 
-    if lo_pheno is not None and hi_pheno is not None:
-        mu_pheno = (
-            1.0
-            if hi_pheno >= 9000
-            else membership_phenology(gdd_now, lo_pheno, hi_pheno)
-        )
-        if mu_pheno == 0.0:
-            return {
-                "score": 0.0,
-                "risk_class": "Out of season",
-                "detail": f"GDD={gdd_now:.0f} outside [{lo_pheno:.0f},{hi_pheno:.0f}]",
-            }
-    else:
-        mu_pheno = 1.0
+    if hi_pheno >= 9000:
+        return 1.0, gdd_now, lo_pheno, hi_pheno
+    return (
+        membership_phenology(gdd_now, lo_pheno, hi_pheno),
+        gdd_now,
+        lo_pheno,
+        hi_pheno,
+    )
+
+
+def _classify(score: float) -> str:
+    if score >= RISK_THRESHOLD_CRITICAL:
+        return "Critical"
+    if score >= RISK_THRESHOLD_HIGH:
+        return "High"
+    if score >= RISK_THRESHOLD_MODERATE:
+        return "Moderate"
+    return "Low"
+
+
+def score_day(
+    weather_row: pd.Series,
+    rules_pest: list[dict],
+    pest_key: str,
+    pest_params: dict,
+) -> dict:
+    t_raw = float(weather_row["temp_avg"])
+    t_lethal_max_p = pest_params.get("t_lethal_max")
+    t_lethal_min_p = pest_params.get("t_lethal_min")
+
+    if t_lethal_max_p is not None and t_raw > float(t_lethal_max_p):
+        return {
+            "score": 0.0,
+            "risk_class": "Low",
+            "detail": f"T={t_raw:.1f}°C > t_lethal_max={t_lethal_max_p}°C",
+        }
+    if t_lethal_min_p is not None and t_raw < float(t_lethal_min_p):
+        return {
+            "score": 0.0,
+            "risk_class": "Low",
+            "detail": f"T={t_raw:.1f}°C < t_lethal_min={t_lethal_min_p}°C",
+        }
+
+    mu_pheno, gdd_now, lo_pheno, hi_pheno = _phenology_mu(weather_row, pest_params)
+    if lo_pheno is not None and mu_pheno == 0.0:
+        return {
+            "score": 0.0,
+            "risk_class": "Out of season",
+            "detail": f"GDD={gdd_now:.0f} outside [{lo_pheno:.0f},{hi_pheno:.0f}]",
+        }
 
     # Weather input selection: fungi/bacteria use 7d MA; insects use daily
     is_pathogen = any(kw in pest_key for kw in _PATHOGEN_KEYWORDS)
@@ -353,15 +362,7 @@ def score_day(
 
     # Phenological scaling + classification
     score = min(100.0, round(score * mu_pheno, 1))
-
-    if score >= RISK_THRESHOLD_CRITICAL:
-        risk_class = "Critical"
-    elif score >= RISK_THRESHOLD_HIGH:
-        risk_class = "High"
-    elif score >= RISK_THRESHOLD_MODERATE:
-        risk_class = "Moderate"
-    else:
-        risk_class = "Low"
+    risk_class = _classify(score)
 
     best = max(activated, key=lambda x: x[0])
     return {
@@ -473,16 +474,40 @@ def _calculate_fuzzy_risk_agstack(
     if not scored:
         return pd.DataFrame()
 
+    extra_t_bases = {
+        float(
+            v
+            if (v := (tm.definition.get("bio_params") or {}).get("t_base")) is not None
+            else 5.0
+        )
+        for tm in scored
+    }
+    enriched = compute_features(weather_df, extra_t_bases=extra_t_bases)
+    pheno_rows = {
+        pd.Timestamp(row["date"]).normalize(): row for _, row in enriched.iterrows()
+    }
+
     wdf = daily_df_to_wdf(weather_df)
     model = FuzzyMamdaniRisk()
     rows: list[dict] = []
     for tm in scored:
+        bio = (tm.definition or {}).get("bio_params") or {}
         result = model.calculate(weather_data=wdf, threat=threatmodel_to_definition(tm))
-        rows.extend(result_to_rows(result, tm))
+        for row in result_to_rows(result, tm):
+            wrow = pheno_rows.get(pd.Timestamp(row["date"]).normalize())
+            if wrow is not None:
+                mu_pheno, _gdd_now, lo_pheno, _hi_pheno = _phenology_mu(wrow, bio)
+                if lo_pheno is not None and mu_pheno == 0.0:
+                    row["risk_score"] = 0.0
+                    row["risk_class"] = "Out of season"
+                else:
+                    row["risk_score"] = min(
+                        100.0, round(row["risk_score"] * mu_pheno, 1)
+                    )
+                    row["risk_class"] = _classify(row["risk_score"])
+            rows.append(row)
     df = pd.DataFrame(rows)
     if not df.empty:
-        # DailyScore.date is a datetime.date; match the inline path's datetime64
-        # dtype so downstream (e.g. _results_to_jsonld's row["date"].date()) works.
         df["date"] = pd.to_datetime(df["date"])
     return df
 

@@ -125,6 +125,19 @@ def test_parity_report(monkeypatch):
     )
 
 
+def test_phenology_gating_matches_inline(monkeypatch):
+    df = _daily(60)
+    tm = _grape_downy()
+
+    inline = _run(df, [tm], use_agstack=False, monkeypatch=monkeypatch)
+    pkg = _run(df, [tm], use_agstack=True, monkeypatch=monkeypatch)
+
+    in_oos = (inline["risk_class"] == "Out of season").to_numpy()
+    pkg_oos = (pkg["risk_class"] == "Out of season").to_numpy()
+    assert in_oos.any(), "fixture should exercise some out-of-season days"
+    assert (in_oos == pkg_oos).all()
+
+
 def test_agstack_path_serializes_to_jsonld(monkeypatch):
     """Regression: the package path must emit a datetime64 'date' column so the
     OCSM serializer (_results_to_jsonld does row['date'].date()) doesn't crash."""
@@ -133,6 +146,8 @@ def test_agstack_path_serializes_to_jsonld(monkeypatch):
     out = calculate_fuzzy_risk(df, [_grape_downy()])
 
     assert out["date"].dtype.kind == "M"  # datetime64, matching the inline path
-    envelope = _format_results(out, FakeParcel(latitude=45.1, longitude=12.3), "json-ld")
+    envelope = _format_results(
+        out, FakeParcel(latitude=45.1, longitude=12.3), "json-ld"
+    )
     members = envelope["@graph"][0]["hasMember"]
     assert members and members[0]["phenomenonTime"]
