@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 
 from core.config import settings
-from utils.fuzzy_risk import calculate_fuzzy_risk
+from utils.fuzzy_risk import _format_results, calculate_fuzzy_risk
 
-from tests.fakes import FakeCrop, FakeThreatModel
+from tests.fakes import FakeCrop, FakeParcel, FakeThreatModel
 
 
 def _daily(n: int = 30) -> pd.DataFrame:
@@ -123,3 +123,16 @@ def test_parity_report(monkeypatch):
             }
         ).to_string(index=False)
     )
+
+
+def test_agstack_path_serializes_to_jsonld(monkeypatch):
+    """Regression: the package path must emit a datetime64 'date' column so the
+    OCSM serializer (_results_to_jsonld does row['date'].date()) doesn't crash."""
+    df = _daily(10)
+    monkeypatch.setattr(settings, "USE_AGSTACK_PND", True)
+    out = calculate_fuzzy_risk(df, [_grape_downy()])
+
+    assert out["date"].dtype.kind == "M"  # datetime64, matching the inline path
+    envelope = _format_results(out, FakeParcel(latitude=45.1, longitude=12.3), "json-ld")
+    members = envelope["@graph"][0]["hasMember"]
+    assert members and members[0]["phenomenonTime"]

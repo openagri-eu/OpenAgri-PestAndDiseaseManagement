@@ -479,7 +479,12 @@ def _calculate_fuzzy_risk_agstack(
     for tm in scored:
         result = model.calculate(weather_data=wdf, threat=threatmodel_to_definition(tm))
         rows.extend(result_to_rows(result, tm))
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        # DailyScore.date is a datetime.date; match the inline path's datetime64
+        # dtype so downstream (e.g. _results_to_jsonld's row["date"].date()) works.
+        df["date"] = pd.to_datetime(df["date"])
+    return df
 
 
 # ─── endpoint helpers ────────────────────────────────────────────────────────
