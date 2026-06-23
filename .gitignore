@@ -8,3 +8,7 @@ __pycache__
 
 venv
 .python-version
+docs/
+parity.csv
+parity_plots/
+scripts/
