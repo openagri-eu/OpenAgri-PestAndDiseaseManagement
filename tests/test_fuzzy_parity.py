@@ -1,26 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 
 from core.config import settings
 from utils.fuzzy_risk import calculate_fuzzy_risk
 
-
-@dataclass
-class FakeCrop:
-    name: str
-
-
-@dataclass
-class FakeThreatModel:
-    scientific_name: str
-    common_name: str
-    crop: FakeCrop
-    definition: dict
-    threat_type: str | None = None
+from tests.fakes import FakeCrop, FakeThreatModel
 
 
 def _daily(n: int = 30) -> pd.DataFrame:

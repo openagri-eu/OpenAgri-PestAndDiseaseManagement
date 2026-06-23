@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import pandas as pd
 
 from utils.custom_schemas import context as EXPECTED_CONTEXT
 from utils.fuzzy_risk import _format_results
 
-
-@dataclass
-class FakeParcel:
-    latitude: float
-    longitude: float
+from tests.fakes import FakeParcel
 
 
 def _results_df() -> pd.DataFrame:
