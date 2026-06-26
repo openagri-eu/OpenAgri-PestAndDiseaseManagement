@@ -151,3 +151,68 @@ def test_agstack_path_serializes_to_jsonld(monkeypatch):
     )
     members = envelope["@graph"][0]["hasMember"]
     assert members and members[0]["phenomenonTime"]
+
+
+def _windowless_fungus() -> FakeThreatModel:
+    # no phenology window -> always in season; a high-humidity rule + a low fallback
+    return FakeThreatModel(
+        scientific_name="Test fungus",
+        common_name="Test",
+        crop=FakeCrop("grape"),
+        definition={
+            "bio_params": {"t_base": 5.0},
+            "fuzzy_rules": [
+                {"hum_lo": 90, "hum_hi": 100, "temp_lo": 10, "temp_hi": 30,
+                 "rain_min": 0.0, "risk_level": "high", "type": "fungal"},
+                {"hum_lo": 0, "hum_hi": 70, "temp_lo": 0, "temp_hi": 35,
+                 "rain_min": 0.0, "risk_level": "low", "type": "fungal"},
+            ],
+        },
+    )
+
+
+def _flat_daily(n: int = 20) -> pd.DataFrame:
+    return pd.DataFrame({
+        "date": pd.date_range("2026-05-01", periods=n, freq="D"),
+        "temp_max": np.full(n, 22.0),
+        "temp_min": np.full(n, 18.0),      # avg 20, inside [10, 30]
+        "humidity": np.full(n, 70.0),      # daily-mean RH -> matches the "low" rule
+        "rainfall": np.zeros(n),
+    })
+
+
+def _hourly_with_spike(n: int = 20) -> pd.DataFrame:
+    rows = []
+    for d in pd.date_range("2026-05-01", periods=n, freq="D"):
+        for h in range(24):
+            rows.append({
+                "date": d + pd.Timedelta(hours=h),
+                "atmospheric_temperature": 20.0,
+                "atmospheric_relative_humidity": 98.0 if h == 12 else 70.0,  # daily MAX 98
+                "precipitation": 0.0,
+            })
+    return pd.DataFrame(rows)
+
+
+def test_hourly_path_uses_daily_max_rh(monkeypatch):
+    """The hourly path lets the package take the daily MAX RH (98 -> 'high' rule),
+    while the daily bridge passes the mean RH (70 -> 'low' rule) -> hourly scores
+    strictly higher. Proves the accuracy mechanism without phenology in the way."""
+    monkeypatch.setattr(settings, "USE_AGSTACK_PND", True)
+    tm, daily, hourly = _windowless_fungus(), _flat_daily(), _hourly_with_spike()
+
+    daily_out = calculate_fuzzy_risk(daily, [tm])
+    hourly_out = calculate_fuzzy_risk(daily, [tm], hourly_df=hourly)
+
+    assert hourly_out["risk_score"].astype(float).between(0, 100).all()
+    assert hourly_out["risk_score"].max() > daily_out["risk_score"].max()
+
+
+def test_hourly_none_matches_daily_path(monkeypatch):
+    """hourly_df=None must be byte-identical to the daily path (no regression)."""
+    monkeypatch.setattr(settings, "USE_AGSTACK_PND", True)
+    tm, daily = _grape_downy(), _daily(40)
+    a = calculate_fuzzy_risk(daily, [tm]).sort_values("date").reset_index(drop=True)
+    b = calculate_fuzzy_risk(daily, [tm], hourly_df=None).sort_values("date").reset_index(drop=True)
+    assert a["risk_score"].tolist() == b["risk_score"].tolist()
+    assert a["risk_class"].tolist() == b["risk_class"].tolist()

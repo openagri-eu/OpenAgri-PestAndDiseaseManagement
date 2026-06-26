@@ -165,6 +165,22 @@ def hourly_rows_to_wdf(rows: Iterable[Any]) -> WeatherDataFrame:
     return _build_wdf(timestamps, _row_columns(rows))
 
 
+def hourly_df_to_wdf(hourly: pd.DataFrame) -> WeatherDataFrame:
+    """Build a WeatherDataFrame from an hourly DataFrame with a datetime ``date``
+    column and DB-named weather columns (atmospheric_temperature, …). One timestamp
+    per reading, so the package aggregates hourly->daily itself (mean temp, MAX RH).
+    """
+    ts = pd.to_datetime(hourly["date"])
+    if getattr(ts.dt, "tz", None) is not None:
+        ts = ts.dt.tz_convert("UTC").dt.tz_localize(None)
+    raw_fields = {
+        canonical: hourly[source]
+        for source, canonical in FIELD_MAP.items()
+        if source in hourly.columns
+    }
+    return _build_wdf(ts.to_numpy(), raw_fields)
+
+
 def _pestmodel_to_rules(pest_model: Any) -> list[dict]:
     rules: list[dict] = []
     for rule in getattr(pest_model, "rules", None) or []:

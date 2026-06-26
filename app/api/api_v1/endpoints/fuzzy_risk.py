@@ -31,6 +31,7 @@ from utils.fuzzy_risk import (
     _openmeteo_to_daily_df,
     _resolve_threat_models,
     _weather_rows_to_daily_df,
+    _weather_rows_to_hourly_df,
     calculate_fuzzy_risk,
 )
 
@@ -60,7 +61,9 @@ def calculate_risk(
     if not threat_models:
         raise HTTPException(status_code=404, detail="No threat models found")
 
-    results = calculate_fuzzy_risk(daily_df, threat_models)
+    results = calculate_fuzzy_risk(
+        daily_df, threat_models, hourly_df=_weather_rows_to_hourly_df(rows)
+    )
     return _format_results(results, parcel, response_format)
 
 
@@ -120,7 +123,7 @@ def historical_fetch_and_calculate(
     _dedupe_and_store_hourly(db, hourly_df, req.parcel_id, req.from_date, req.to_date)
 
     daily_df = _hourly_df_to_daily(hourly_df)
-    results  = calculate_fuzzy_risk(daily_df, threat_models)
+    results  = calculate_fuzzy_risk(daily_df, threat_models, hourly_df=hourly_df)
     return _format_results(results, parcel, response_format)
 
 
@@ -184,5 +187,5 @@ def forecast_fetch_and_calculate(
     _dedupe_and_store_hourly(db, hourly_df, req.parcel_id, req.from_date, req.to_date)
 
     daily_df = _hourly_df_to_daily(hourly_df)
-    results  = calculate_fuzzy_risk(daily_df, threat_models)
+    results  = calculate_fuzzy_risk(daily_df, threat_models, hourly_df=hourly_df)
     return _format_results(results, parcel, response_format)

@@ -408,17 +408,22 @@ def _definition_to_rules(definition: dict) -> list[dict]:
 def calculate_fuzzy_risk(
     weather_df: pd.DataFrame,
     threat_models: list[Any],
+    hourly_df: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """Run the fuzzy risk model for all threat models over the weather period.
 
     threat_models: objects with .scientific_name, .common_name, .definition
                    (.definition is a dict with 'bio_params' and 'fuzzy_rules')
+    hourly_df:     optional pre-aggregation hourly weather (DB-named columns). Used
+                   only by the agstack path, which feeds it to the package so it
+                   aggregates hourly->daily itself (mean temp, MAX RH) — an accuracy
+                   upgrade over the daily bridge. The inline path ignores it.
 
     Returns DataFrame with columns:
       date, scientific_name, common_name, risk_score, risk_class, detail
     """
     if settings.USE_AGSTACK_PND:
-        return _calculate_fuzzy_risk_agstack(weather_df, threat_models)
+        return _calculate_fuzzy_risk_agstack(weather_df, threat_models, hourly_df)
 
     extra_t_bases = {
         float(
@@ -458,11 +463,13 @@ def calculate_fuzzy_risk(
 def _calculate_fuzzy_risk_agstack(
     weather_df: pd.DataFrame,
     threat_models: list[Any],
+    hourly_df: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     from agstack_pnd.models.agronomic.phenology import PhenologicalGating
     from agstack_pnd.models.disease.fuzzy_mamdani import FuzzyMamdaniRisk
     from utils.agstack_adapter import (
         daily_df_to_wdf,
+        hourly_df_to_wdf,
         result_to_rows,
         threatmodel_to_definition,
     )
@@ -483,14 +490,22 @@ def _calculate_fuzzy_risk_agstack(
         )
         for tm in scored
     }
+    # The daily frame always supplies the phenology reference + season_year.
     enriched = compute_features(weather_df, extra_t_bases=extra_t_bases)
     season_by_date = dict(
-        zip(pd.to_datetime(enriched["date"]), enriched["season_year"])
+        zip(pd.to_datetime(enriched["date"]).dt.date, enriched["season_year"])
     )
-    work = weather_df.copy()
-    work["date"] = pd.to_datetime(work["date"])
-    work["__season"] = work["date"].map(season_by_date)
-    work = work.sort_values("date")
+
+    # Scoring frame: hourly when supplied (the package aggregates hourly->daily
+    # itself — mean temp, MAX relative humidity — an intended accuracy upgrade over
+    # the daily bridge), else the daily frame (unchanged behaviour).
+    if hourly_df is not None and not hourly_df.empty:
+        score_frame, to_wdf = hourly_df.copy(), hourly_df_to_wdf
+    else:
+        score_frame, to_wdf = weather_df.copy(), daily_df_to_wdf
+    score_frame["date"] = pd.to_datetime(score_frame["date"])
+    score_frame["__season"] = score_frame["date"].dt.date.map(season_by_date)
+    score_frame = score_frame.sort_values("date")
 
     fuzzy = FuzzyMamdaniRisk()
     pheno = PhenologicalGating()
@@ -510,8 +525,8 @@ def _calculate_fuzzy_risk_agstack(
         ):
             definition.bio_params.pheno_fraction_ref_gdd5 = ref_value
 
-        for _season, slice_df in work.groupby("__season", sort=True):
-            wdf = daily_df_to_wdf(slice_df.drop(columns="__season"))
+        for _season, slice_df in score_frame.groupby("__season", sort=True):
+            wdf = to_wdf(slice_df.drop(columns="__season"))
             result = fuzzy.calculate(weather_data=wdf, threat=definition)
             mu_by_date = {
                 s.date: s.value
@@ -569,6 +584,34 @@ def _weather_rows_to_daily_df(rows) -> pd.DataFrame:
     )
     daily["date"] = pd.to_datetime(daily["date"])
     return daily.sort_values("date").reset_index(drop=True)
+
+
+def _weather_rows_to_hourly_df(rows) -> pd.DataFrame:
+    """DB hourly rows -> one-row-per-reading DataFrame for the agstack package
+    (which aggregates hourly->daily itself: mean temp, MAX RH, sum rain). Columns:
+    date (hourly datetime), atmospheric_temperature, atmospheric_relative_humidity,
+    precipitation. DB-named columns so the adapter's FIELD_MAP applies."""
+    cols = [
+        "date", "atmospheric_temperature",
+        "atmospheric_relative_humidity", "precipitation",
+    ]
+    records = [
+        {
+            "date": datetime.datetime.combine(
+                r.date, getattr(r, "time", None) or datetime.time()
+            ),
+            "atmospheric_temperature": r.atmospheric_temperature,
+            "atmospheric_relative_humidity": r.atmospheric_relative_humidity,
+            "precipitation": r.precipitation or 0.0,
+        }
+        for r in (rows or [])
+        if r.atmospheric_temperature is not None
+    ]
+    if not records:
+        return pd.DataFrame(columns=cols)
+    df = pd.DataFrame(records)
+    df["date"] = pd.to_datetime(df["date"])
+    return df.sort_values("date").reset_index(drop=True)
 
 
 def _openmeteo_to_daily_df(

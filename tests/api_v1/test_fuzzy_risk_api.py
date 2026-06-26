@@ -121,6 +121,7 @@ def _patch_calculate_happy_path(mocker):
     mock_crud.data.get_data_by_parcel_id_and_date_interval.return_value = [MagicMock()]
 
     mocker.patch(f"{ENDPOINT_MODULE}._weather_rows_to_daily_df", return_value=SAMPLE_DAILY_DF)
+    mocker.patch(f"{ENDPOINT_MODULE}._weather_rows_to_hourly_df", return_value=SAMPLE_HOURLY_DF)
     mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models",    return_value=[MagicMock()])
     mocker.patch(f"{ENDPOINT_MODULE}.calculate_fuzzy_risk",      return_value=SAMPLE_RESULTS_DF)
     return mock_crud

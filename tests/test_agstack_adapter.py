@@ -17,6 +17,7 @@ from agstack_pnd.models.disease.fuzzy_mamdani import FuzzyMamdaniRisk
 
 from utils.agstack_adapter import (
     daily_df_to_wdf,
+    hourly_df_to_wdf,
     hourly_rows_to_wdf,
     result_to_rows,
     threatmodel_to_definition,
@@ -411,3 +412,36 @@ class TestEngineConsumesAdapterOutput:
             }
             for r in rows
         )
+
+
+class TestHourlyDfToWdf:
+    def _hourly(self) -> pd.DataFrame:
+        # two days, 3 readings each, with a humidity spike on day 1
+        return pd.DataFrame({
+            "date": pd.to_datetime([
+                "2026-05-01T00:00", "2026-05-01T12:00", "2026-05-01T18:00",
+                "2026-05-02T00:00", "2026-05-02T12:00", "2026-05-02T18:00",
+            ]),
+            "atmospheric_temperature": [12.0, 22.0, 16.0, 11.0, 21.0, 15.0],
+            "atmospheric_relative_humidity": [70.0, 98.0, 75.0, 60.0, 65.0, 62.0],
+            "precipitation": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+        })
+
+    def test_maps_canonical_fields(self):
+        wdf = hourly_df_to_wdf(self._hourly())
+        assert "air_temperature" in wdf
+        assert "relative_humidity" in wdf
+        assert "precipitation" in wdf
+
+    def test_preserves_every_reading(self):
+        # one timestamp per reading (NOT collapsed to daily) so the package can
+        # take the daily max RH itself
+        wdf = hourly_df_to_wdf(self._hourly())
+        assert len(wdf.timestamps) == 6
+        assert 98.0 in list(wdf["relative_humidity"])
+
+    def test_handles_tz_aware_timestamps(self):
+        h = self._hourly()
+        h["date"] = h["date"].dt.tz_localize("UTC")
+        wdf = hourly_df_to_wdf(h)
+        assert len(wdf.timestamps) == 6
