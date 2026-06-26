@@ -13,6 +13,14 @@ class RiskLevel(str, Enum):
     critical = "critical"
 
 
+class ThreatType(str, Enum):
+    fungus    = "fungus"
+    bacterium = "bacterium"
+    oomycete  = "oomycete"
+    insect    = "insect"
+    mite      = "mite"
+
+
 class FuzzyRule(BaseModel):
     hum_lo:     float = Field(0.0,   ge=0.0,   le=100.0)
     hum_hi:     float = Field(100.0, ge=0.0,   le=100.0)
@@ -61,6 +69,7 @@ class ThreatModelCreate(BaseModel):
     common_name:     str = Field(..., max_length=50)
     label:           Optional[str] = Field(None, max_length=50)
     note:            Optional[str] = Field(None, max_length=300)
+    threat_type:     Optional[ThreatType] = None
     definition:      ThreatModelDefinition
     crop_id:         UUID4
 
@@ -70,6 +79,7 @@ class ThreatModelUpdate(BaseModel):
     common_name:     Optional[str] = Field(None, max_length=50)
     label:           Optional[str] = Field(None, max_length=50)
     note:            Optional[str] = Field(None, max_length=300)
+    threat_type:     Optional[ThreatType] = None
     definition:      Optional[ThreatModelDefinition] = None
 
 
@@ -81,6 +91,7 @@ class ThreatModelDB(BaseModel):
     common_name:     str
     label:           Optional[str] = None
     note:            Optional[str] = None
+    threat_type:     Optional[str] = None
     definition:      dict
     crop_id:         UUID4
     warnings:        List[str] = []

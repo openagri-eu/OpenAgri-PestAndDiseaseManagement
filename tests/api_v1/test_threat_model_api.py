@@ -43,6 +43,7 @@ def _make_tm(scientific_name: str = "Venturia inaequalis") -> MagicMock:
     obj.common_name     = "Apple scab"
     obj.label           = None
     obj.note            = None
+    obj.threat_type     = None
     obj.definition      = SAMPLE_DEFINITION
     obj.crop_id         = crop_id
     return obj

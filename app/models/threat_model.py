@@ -1,10 +1,14 @@
 import uuid
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base_class import Base
+
+if TYPE_CHECKING:
+    from models.crop import Crop
 
 
 class ThreatModel(Base):
@@ -16,6 +20,7 @@ class ThreatModel(Base):
     common_name: Mapped[str] = mapped_column(String(50))
     label: Mapped[str] = mapped_column(String(50), nullable=True)
     note: Mapped[str] = mapped_column(String(300), nullable=True)
+    threat_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     definition: Mapped[dict] = mapped_column(JSONB())
 
     crop_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("crop.id"))
