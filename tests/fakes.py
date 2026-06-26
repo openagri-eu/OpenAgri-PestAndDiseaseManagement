@@ -33,3 +33,34 @@ class FakeDataRow:
 class FakeParcel:
     latitude: float
     longitude: float
+
+
+@dataclass
+class FakeUnit:
+    name: str
+
+
+@dataclass
+class FakeOperator:
+    symbol: str
+
+
+@dataclass
+class FakeCondition:
+    unit: FakeUnit
+    operator: FakeOperator
+    value: float
+
+
+@dataclass
+class FakeRule:
+    probability_value: str
+    conditions: list
+    from_time: time | None = None
+    to_time: time | None = None
+
+
+@dataclass
+class FakePestModel:
+    name: str
+    rules: list

@@ -226,8 +226,27 @@ class TestThreatModelToDefinition:
         assert bp.t_lethal_max == 35.0
         assert bp.min_streak == 4
 
-    def test_package_phenology_is_neutralised(self):
+    def test_fraction_window_passes_through(self):
+        # A threat with a fraction window keeps it (so the package's own phenology
+        # uses it); the absolute window is cleared so the package takes the frac
+        # branch (mirrors inline precedence). The reference is set later in the glue.
         bp = threatmodel_to_definition(_fungal_tm()).bio_params
+        assert bp.pheno_frac_lo == 0.10 and bp.pheno_frac_hi == 0.80
+        assert bp.pheno_lo is None and bp.pheno_hi is None
+
+    def test_windowless_threat_gets_wide_sentinel(self):
+        # No phenology window in PND -> widen so the package's [100,2000] default
+        # never gates (inline treats "no window" as always-in-season).
+        tm = _fungal_tm(
+            definition={
+                "bio_params": {"t_base": 5.0},
+                "fuzzy_rules": [
+                    {"hum_lo": 80, "hum_hi": 100, "temp_lo": 10, "temp_hi": 30,
+                     "rain_min": 0, "risk_level": "high", "type": "fungal"}
+                ],
+            }
+        )
+        bp = threatmodel_to_definition(tm).bio_params
         assert bp.pheno_lo <= -1e9 and bp.pheno_hi >= 1e9
         assert bp.pheno_frac_lo is None and bp.pheno_frac_hi is None
 

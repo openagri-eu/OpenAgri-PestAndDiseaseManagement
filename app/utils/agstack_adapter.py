@@ -13,6 +13,8 @@ from agstack_pnd.foundation.types import (
     WeatherDataFrame,
 )
 
+from .wdutils import openmeteo_friendly_variables
+
 FIELD_MAP: dict[str, str] = {
     "atmospheric_temperature": "air_temperature",
     "atmospheric_relative_humidity": "relative_humidity",
@@ -20,6 +22,12 @@ FIELD_MAP: dict[str, str] = {
     "average_wind_speed": "wind_speed",
     "atmospheric_pressure": "atmospheric_pressure",
 }
+
+_OPENMETEO_TO_UNIT: dict[str, str] = {
+    om: unit for unit, om in openmeteo_friendly_variables.items()
+}
+
+_PACKAGE_OPERATORS = frozenset({">", ">=", "<", "<=", "==", "!="})
 
 _BIOPARAM_RENAME: dict[str, str] = {"pheno_frac_ref_gdd5": "pheno_fraction_ref_gdd5"}
 
@@ -110,10 +118,21 @@ def _package_bio_params(raw: dict) -> dict:
         if raw.get(key) is None:
             cleaned[key] = neutral
 
-    cleaned["pheno_lo"] = -1.0e9
-    cleaned["pheno_hi"] = 1.0e9
-    cleaned.pop("pheno_frac_lo", None)
-    cleaned.pop("pheno_frac_hi", None)
+    has_frac = (
+        raw.get("pheno_frac_lo") is not None and raw.get("pheno_frac_hi") is not None
+    )
+    has_abs = raw.get("pheno_lo") is not None and raw.get("pheno_hi") is not None
+    if has_frac:
+        cleaned.pop("pheno_lo", None)
+        cleaned.pop("pheno_hi", None)
+    elif has_abs:
+        cleaned.pop("pheno_frac_lo", None)
+        cleaned.pop("pheno_frac_hi", None)
+    else:
+        cleaned["pheno_lo"] = -1.0e9
+        cleaned["pheno_hi"] = 1.0e9
+        cleaned.pop("pheno_frac_lo", None)
+        cleaned.pop("pheno_frac_hi", None)
     return cleaned
 
 
@@ -144,6 +163,58 @@ def hourly_rows_to_wdf(rows: Iterable[Any]) -> WeatherDataFrame:
     rows = list(rows)
     timestamps = [_row_timestamp(r) for r in rows]
     return _build_wdf(timestamps, _row_columns(rows))
+
+
+def _pestmodel_to_rules(pest_model: Any) -> list[dict]:
+    rules: list[dict] = []
+    for rule in getattr(pest_model, "rules", None) or []:
+        conditions: list[dict] = []
+        for cond in getattr(rule, "conditions", None) or []:
+            unit_name = getattr(getattr(cond, "unit", None), "name", None)
+            field = FIELD_MAP.get(unit_name) if unit_name else None
+            op = getattr(getattr(cond, "operator", None), "symbol", None)
+            if field is None or op not in _PACKAGE_OPERATORS:
+                continue
+            conditions.append({"field": field, "op": op, "value": float(cond.value)})
+        if not conditions:
+            continue
+        rules.append(
+            {
+                "conditions": conditions,
+                "risk": (getattr(rule, "probability_value", None) or "low").lower(),
+            }
+        )
+    return rules
+
+
+def _parse_ts(value: Any) -> np.datetime64:
+    ts = pd.Timestamp(value)
+    if ts.tz is not None:
+        ts = ts.tz_convert("UTC").tz_localize(None)
+    return ts.to_datetime64()
+
+
+def risk_index_weather_to_wdf(weather_data: dict) -> WeatherDataFrame:
+    hours = weather_data.get("data") or []
+    timestamps = [_parse_ts(h["timestamp"]) for h in hours]
+
+    om_to_canonical: dict[str, str] = {}
+    for hour in hours:
+        for om_field in hour.get("values") or {}:
+            unit_name = _OPENMETEO_TO_UNIT.get(om_field)
+            canonical = FIELD_MAP.get(unit_name) if unit_name else None
+            if canonical is not None:
+                om_to_canonical[om_field] = canonical
+
+    columns: dict[str, list[Any]] = {
+        canonical: [] for canonical in om_to_canonical.values()
+    }
+    for hour in hours:
+        values = hour.get("values") or {}
+        for om_field, canonical in om_to_canonical.items():
+            columns[canonical].append(values.get(om_field))
+
+    return _build_wdf(timestamps, columns)
 
 
 def threatmodel_to_definition(tm: Any) -> ThreatDefinition:

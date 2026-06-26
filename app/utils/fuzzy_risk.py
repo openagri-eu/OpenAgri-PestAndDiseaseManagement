@@ -459,6 +459,7 @@ def _calculate_fuzzy_risk_agstack(
     weather_df: pd.DataFrame,
     threat_models: list[Any],
 ) -> pd.DataFrame:
+    from agstack_pnd.models.agronomic.phenology import PhenologicalGating
     from agstack_pnd.models.disease.fuzzy_mamdani import FuzzyMamdaniRisk
     from utils.agstack_adapter import (
         daily_df_to_wdf,
@@ -471,7 +472,7 @@ def _calculate_fuzzy_risk_agstack(
         for tm in threat_models
         if (tm.definition if isinstance(tm.definition, dict) else {}).get("fuzzy_rules")
     ]
-    if not scored:
+    if not scored or weather_df.empty:
         return pd.DataFrame()
 
     extra_t_bases = {
@@ -483,29 +484,49 @@ def _calculate_fuzzy_risk_agstack(
         for tm in scored
     }
     enriched = compute_features(weather_df, extra_t_bases=extra_t_bases)
-    pheno_rows = {
-        pd.Timestamp(row["date"]).normalize(): row for _, row in enriched.iterrows()
-    }
+    season_by_date = dict(
+        zip(pd.to_datetime(enriched["date"]), enriched["season_year"])
+    )
+    work = weather_df.copy()
+    work["date"] = pd.to_datetime(work["date"])
+    work["__season"] = work["date"].map(season_by_date)
+    work = work.sort_values("date")
 
-    wdf = daily_df_to_wdf(weather_df)
-    model = FuzzyMamdaniRisk()
+    fuzzy = FuzzyMamdaniRisk()
+    pheno = PhenologicalGating()
     rows: list[dict] = []
     for tm in scored:
-        bio = (tm.definition or {}).get("bio_params") or {}
-        result = model.calculate(weather_data=wdf, threat=threatmodel_to_definition(tm))
-        for row in result_to_rows(result, tm):
-            wrow = pheno_rows.get(pd.Timestamp(row["date"]).normalize())
-            if wrow is not None:
-                mu_pheno, _gdd_now, lo_pheno, _hi_pheno = _phenology_mu(wrow, bio)
-                if lo_pheno is not None and mu_pheno == 0.0:
+        definition = threatmodel_to_definition(tm)
+        t_base = float(definition.bio_params.t_base)
+        ref_col = f"gdd_annual_ref_{int(t_base)}b"
+        ref_value = float(
+            enriched[ref_col].iloc[0]
+            if ref_col in enriched.columns
+            else enriched["gdd_annual_ref_5b"].iloc[0]
+        )
+        if (
+            definition.bio_params.pheno_frac_lo is not None
+            and definition.bio_params.pheno_frac_hi is not None
+        ):
+            definition.bio_params.pheno_fraction_ref_gdd5 = ref_value
+
+        for _season, slice_df in work.groupby("__season", sort=True):
+            wdf = daily_df_to_wdf(slice_df.drop(columns="__season"))
+            result = fuzzy.calculate(weather_data=wdf, threat=definition)
+            mu_by_date = {
+                s.date: s.value
+                for s in pheno.calculate(
+                    wdf, {"base_temp": t_base}, threat=definition
+                ).daily_scores
+            }
+            for row in result_to_rows(result, tm):
+                if mu_by_date.get(row["date"], 1.0) == 0.0:
                     row["risk_score"] = 0.0
                     row["risk_class"] = "Out of season"
                 else:
-                    row["risk_score"] = min(
-                        100.0, round(row["risk_score"] * mu_pheno, 1)
-                    )
-                    row["risk_class"] = _classify(row["risk_score"])
-            rows.append(row)
+                    row["risk_class"] = _classify(float(row["risk_score"]))
+                rows.append(row)
+
     df = pd.DataFrame(rows)
     if not df.empty:
         df["date"] = pd.to_datetime(df["date"])
