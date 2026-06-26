@@ -28,7 +28,7 @@ from utils.fcutils import fetch_parcel_by_id, fetch_parcel_lat_lon
 from utils.fuzzy_risk import (
     _format_results,
     _hourly_df_to_daily,
-    _openmeteo_to_daily_df,
+    _openmeteo_forecast_hourly_df,
     _resolve_threat_models,
     _weather_rows_to_daily_df,
     _weather_rows_to_hourly_df,
@@ -79,7 +79,8 @@ def forecast_risk(
         raise HTTPException(status_code=404, detail="Parcel not found")
 
     days = req.days_ahead or 7
-    daily_df = _openmeteo_to_daily_df(parcel.latitude, parcel.longitude, days)
+    hourly_df = _openmeteo_forecast_hourly_df(parcel.latitude, parcel.longitude, days)
+    daily_df = _hourly_df_to_daily(hourly_df)
     if daily_df.empty:
         raise HTTPException(status_code=502, detail="No forecast data returned from OpenMeteo")
 
@@ -87,7 +88,7 @@ def forecast_risk(
     if not threat_models:
         raise HTTPException(status_code=404, detail="No threat models found")
 
-    results = calculate_fuzzy_risk(daily_df, threat_models)
+    results = calculate_fuzzy_risk(daily_df, threat_models, hourly_df=hourly_df)
     return _format_results(results, parcel, response_format)
 
 
@@ -142,7 +143,8 @@ def forecast_risk_fc(
     lat, lon = fetch_parcel_lat_lon(parcel_fc)
 
     days = req.days_ahead or 7
-    daily_df = _openmeteo_to_daily_df(lat, lon, days)
+    hourly_df = _openmeteo_forecast_hourly_df(lat, lon, days)
+    daily_df = _hourly_df_to_daily(hourly_df)
     if daily_df.empty:
         raise HTTPException(status_code=502, detail="No forecast data returned from OpenMeteo")
 
@@ -150,7 +152,7 @@ def forecast_risk_fc(
     if not threat_models:
         raise HTTPException(status_code=404, detail="No threat models found")
 
-    results = calculate_fuzzy_risk(daily_df, threat_models)
+    results = calculate_fuzzy_risk(daily_df, threat_models, hourly_df=hourly_df)
     parcel_proxy = SimpleNamespace(latitude=lat, longitude=lon)
     return _format_results(results, parcel_proxy, response_format)
 

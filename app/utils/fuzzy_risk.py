@@ -614,10 +614,13 @@ def _weather_rows_to_hourly_df(rows) -> pd.DataFrame:
     return df.sort_values("date").reset_index(drop=True)
 
 
-def _openmeteo_to_daily_df(
+def _openmeteo_forecast_hourly_df(
     latitude: float, longitude: float, days_ahead: int
 ) -> pd.DataFrame:
-    """Fetch hourly forecast from OpenMeteo and aggregate to daily."""
+    """Fetch hourly forecast from OpenMeteo; return one row per hour with a tz-aware
+    (UTC) datetime ``date`` column and DB-named weather columns. Consumed by
+    ``_hourly_df_to_daily`` (daily bridge) and the agstack hourly path
+    (``hourly_df_to_wdf``)."""
     if days_ahead < settings.OPEN_METEO_MIN_FORECAST_DAYS:
         days_ahead = settings.OPEN_METEO_MIN_FORECAST_DAYS
     if days_ahead > settings.OPEN_METEO_MAX_FORECAST_DAYS:
@@ -648,28 +651,24 @@ def _openmeteo_to_daily_df(
         end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
         freq=pd.Timedelta(seconds=hourly.Interval()),
         inclusive="left",
-    ).tz_localize(None)
-
-    df = pd.DataFrame(
+    )
+    return pd.DataFrame(
         {
-            "date": dates.date,
-            "temp": hourly.Variables(0).ValuesAsNumpy(),
-            "humidity": hourly.Variables(1).ValuesAsNumpy(),
-            "rainfall": hourly.Variables(2).ValuesAsNumpy(),
+            "date": dates,
+            "atmospheric_temperature": hourly.Variables(0).ValuesAsNumpy(),
+            "atmospheric_relative_humidity": hourly.Variables(1).ValuesAsNumpy(),
+            "precipitation": hourly.Variables(2).ValuesAsNumpy(),
         }
     )
-    daily = (
-        df.groupby("date")
-        .agg(
-            temp_max=("temp", "max"),
-            temp_min=("temp", "min"),
-            humidity=("humidity", "mean"),
-            rainfall=("rainfall", "sum"),
-        )
-        .reset_index()
+
+
+def _openmeteo_to_daily_df(
+    latitude: float, longitude: float, days_ahead: int
+) -> pd.DataFrame:
+    """Fetch hourly forecast from OpenMeteo and aggregate to daily."""
+    return _hourly_df_to_daily(
+        _openmeteo_forecast_hourly_df(latitude, longitude, days_ahead)
     )
-    daily["date"] = pd.to_datetime(daily["date"])
-    return daily.sort_values("date").reset_index(drop=True)
 
 
 def _hourly_df_to_daily(df: pd.DataFrame) -> pd.DataFrame:

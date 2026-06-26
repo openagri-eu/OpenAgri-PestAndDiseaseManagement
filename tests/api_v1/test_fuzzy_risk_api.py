@@ -132,7 +132,8 @@ def _patch_forecast_happy_path(mocker):
     mock_crud = mocker.patch(f"{ENDPOINT_MODULE}.crud")
     mock_crud.parcel.get.return_value = _make_parcel()
 
-    mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_to_daily_df", return_value=SAMPLE_DAILY_DF)
+    mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_forecast_hourly_df", return_value=SAMPLE_HOURLY_DF)
+    mocker.patch(f"{ENDPOINT_MODULE}._hourly_df_to_daily",    return_value=SAMPLE_DAILY_DF)
     mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models", return_value=[MagicMock()])
     mocker.patch(f"{ENDPOINT_MODULE}.calculate_fuzzy_risk",   return_value=SAMPLE_RESULTS_DF)
     return mock_crud
@@ -248,7 +249,8 @@ class TestForecastRisk:
     def test_no_threat_models(self, client, mocker):
         mock_crud = mocker.patch(f"{ENDPOINT_MODULE}.crud")
         mock_crud.parcel.get.return_value = _make_parcel()
-        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_to_daily_df", return_value=SAMPLE_DAILY_DF)
+        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_forecast_hourly_df", return_value=SAMPLE_HOURLY_DF)
+        mocker.patch(f"{ENDPOINT_MODULE}._hourly_df_to_daily", return_value=SAMPLE_DAILY_DF)
         mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models", return_value=[])
         r = client.post("/forecast/", json=FORECAST_BODY)
         assert r.status_code == 404
@@ -256,7 +258,8 @@ class TestForecastRisk:
     def test_openmeteo_empty_response(self, client, mocker):
         mock_crud = mocker.patch(f"{ENDPOINT_MODULE}.crud")
         mock_crud.parcel.get.return_value = _make_parcel()
-        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_to_daily_df", return_value=pd.DataFrame())
+        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_forecast_hourly_df", return_value=SAMPLE_HOURLY_DF)
+        mocker.patch(f"{ENDPOINT_MODULE}._hourly_df_to_daily", return_value=pd.DataFrame())
         r = client.post("/forecast/", json=FORECAST_BODY)
         assert r.status_code == 502
 
@@ -379,7 +382,8 @@ def _patch_fc_forecast_happy_path(mocker):
     mocker.patch(f"{ENDPOINT_MODULE}.fetch_parcel_by_id",
                  return_value={"location": {"lat": 45.0, "long": 14.0}})
     mocker.patch(f"{ENDPOINT_MODULE}.fetch_parcel_lat_lon", return_value=(45.0, 14.0))
-    mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_to_daily_df", return_value=SAMPLE_DAILY_DF)
+    mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_forecast_hourly_df", return_value=SAMPLE_HOURLY_DF)
+    mocker.patch(f"{ENDPOINT_MODULE}._hourly_df_to_daily",    return_value=SAMPLE_DAILY_DF)
     mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models", return_value=[MagicMock()])
     mocker.patch(f"{ENDPOINT_MODULE}.calculate_fuzzy_risk",   return_value=SAMPLE_RESULTS_DF)
 
@@ -418,7 +422,8 @@ class TestForecastRiskFc:
         mocker.patch(f"{ENDPOINT_MODULE}.fetch_parcel_by_id",
                      return_value={"location": {"lat": 45.0, "long": 14.0}})
         mocker.patch(f"{ENDPOINT_MODULE}.fetch_parcel_lat_lon", return_value=(45.0, 14.0))
-        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_to_daily_df", return_value=pd.DataFrame())
+        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_forecast_hourly_df", return_value=SAMPLE_HOURLY_DF)
+        mocker.patch(f"{ENDPOINT_MODULE}._hourly_df_to_daily", return_value=pd.DataFrame())
         r = client_fc.post("/fc/forecast/", json=FC_FORECAST_BODY)
         assert r.status_code == 502
 
@@ -426,7 +431,8 @@ class TestForecastRiskFc:
         mocker.patch(f"{ENDPOINT_MODULE}.fetch_parcel_by_id",
                      return_value={"location": {"lat": 45.0, "long": 14.0}})
         mocker.patch(f"{ENDPOINT_MODULE}.fetch_parcel_lat_lon", return_value=(45.0, 14.0))
-        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_to_daily_df", return_value=SAMPLE_DAILY_DF)
+        mocker.patch(f"{ENDPOINT_MODULE}._openmeteo_forecast_hourly_df", return_value=SAMPLE_HOURLY_DF)
+        mocker.patch(f"{ENDPOINT_MODULE}._hourly_df_to_daily", return_value=SAMPLE_DAILY_DF)
         mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models", return_value=[])
         r = client_fc.post("/fc/forecast/", json=FC_FORECAST_BODY)
         assert r.status_code == 404
