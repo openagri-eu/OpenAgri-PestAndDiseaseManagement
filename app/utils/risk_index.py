@@ -11,6 +11,7 @@ import uuid
 
 from models import PestModel, Parcel
 from .wdutils import openmeteo_friendly_variables
+from .rule_ops import condition_true, rule_mask
 from core.config import settings
 
 prob_values = {
@@ -33,16 +34,12 @@ def calculate_risk_index_probability(db: Session, parcel: Parcel, pest_models: L
         risks_for_current_pm = ["Low"] * df.shape[0]
 
         for rule in pm.rules:
-            final_str = "(x['{}'] {} {})".format(rule.conditions[0].unit.name, rule.conditions[0].operator.symbol, float(rule.conditions[0].value))
-            for cond in rule.conditions[1:]:
-                final_str = final_str + " & " + "(x['{}'] {} {})".format(cond.unit.name, cond.operator.symbol, float(cond.value))
-
-            df_with_risk = df.assign(risk=eval("lambda x: {}".format(final_str)))
+            mask = rule_mask(df, rule.conditions)
 
             # With this, only one rule should only ever fire for one singular date/time weather data point.
             # If multiple rules turn up as valid (both are true), then the last one from the db is going to have its
             # prob. value written as a final response for this pest model
-            risks_for_current_pm = [rule.probability_value if x else y for x, y in zip(df_with_risk["risk"], risks_for_current_pm)]
+            risks_for_current_pm = [rule.probability_value if x else y for x, y in zip(mask, risks_for_current_pm)]
 
         df["{}".format(pm.name)] = risks_for_current_pm
 
@@ -136,16 +133,16 @@ def calculate_risk_index_probability_wd(
             for rule in pm.rules:
 
                 # Filter, if parameter set to "high", skip low and medium ones
-                if parameter and prob_values[rule.probability_value] < prob_values[parameter]:
+                if parameter and prob_values.get(rule.probability_value, 0) < prob_values.get(parameter, 0):
                     continue
 
                 # Skip these since their calculation wouldn't meaningfully add to the current model limits
-                if rule.probability_value and prob_values[rule.probability_value] <= prob_values[current_rule_risk_index]:
+                if rule.probability_value and prob_values.get(rule.probability_value, 0) <= prob_values.get(current_rule_risk_index, 0):
                     continue
 
                 current_rule_applies = True
                 for cond in rule.conditions:
-                    condition_applies = eval("{} {} {}".format(hour["values"][openmeteo_friendly_variables[cond.unit.name]], cond.operator.symbol, cond.value))
+                    condition_applies = condition_true(hour["values"][openmeteo_friendly_variables[cond.unit.name]], cond.operator.symbol, cond.value)
                     if not condition_applies:
                         current_rule_applies = False
                         break
@@ -164,7 +161,7 @@ def calculate_risk_index_probability_wd(
                 )
                 continue
 
-            if parameter and prob_values[current_rule_risk_index] >= prob_values[parameter]:
+            if parameter and prob_values.get(current_rule_risk_index, 0) >= prob_values.get(parameter, 0):
                 calculated_risks.append(
                     {
                         "@id": "urn:openagri:pestInfectationRisk:obs2:{}".format(uuid.uuid4()),
@@ -265,7 +262,7 @@ def _calculate_risk_index_probability_wd_agstack(
         calculated_risks = []
         for hour in weather_data["data"]:
             level = day_level.get(pd.Timestamp(hour["timestamp"]).date(), "low")
-            if parameter and prob_values[level] < prob_values[parameter]:
+            if parameter and prob_values.get(level, 0) < prob_values.get(parameter, 0):
                 continue
             calculated_risks.append(
                 {
@@ -295,24 +292,11 @@ def calculate_forecast_risk_index(
         for rule in pm.rules:
             if len(rule.conditions) == 0:
                 continue
-            final_str = "(x['{}'] {} {})".format(
-                rule.conditions[0].unit.name,
-                rule.conditions[0].operator.symbol,
-                rule.conditions[0].value,
-            )
-            for cond in rule.conditions[1:]:
-                final_str = (final_str + " & " + "(x['{}'] {} {})".format(
-                        cond.unit.name, cond.operator.symbol, cond.value
-                    )
-                )
-
-            df_with_risk = weather_data.assign(
-                risk=eval("lambda x: {}".format(final_str))
-            )
+            mask = rule_mask(weather_data, rule.conditions)
 
             risks_for_current_pm = [
                 rule.probability_value if x else y
-                for x, y in zip(df_with_risk["risk"], risks_for_current_pm)
+                for x, y in zip(mask, risks_for_current_pm)
             ]
 
         weather_data["{}".format(pm.name)] = risks_for_current_pm

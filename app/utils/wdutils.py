@@ -11,6 +11,7 @@ from core import settings
 from enum import Enum
 from utils.gatekeeper_client import GatekeeperClient
 from utils.weather_service_client import WeatherServiceClient
+from utils.rule_ops import rule_mask
 
 import pandas as pd
 
@@ -152,24 +153,11 @@ def calculate_risk_index_forecast_wd(
         risks_for_current_pm = ["Low"] * df.shape[0]
 
         for rule in pm.rules:
-            final_str = "(x['{}'] {} {})".format(
-                rule.conditions[0].unit.name,
-                rule.conditions[0].operator.symbol,
-                rule.conditions[0].value,
-            )
-            for cond in rule.conditions[1:]:
-                final_str = (final_str + " & " + "(x['{}'] {} {})".format(
-                    cond.unit.name, cond.operator.symbol, cond.value
-                )
-                             )
-
-            df_with_risk = df.assign(
-                risk=eval("lambda x: {}".format(final_str))
-            )
+            mask = rule_mask(df, rule.conditions)
 
             risks_for_current_pm = [
                 rule.probability_value if x else y
-                for x, y in zip(df_with_risk["risk"], risks_for_current_pm)
+                for x, y in zip(mask, risks_for_current_pm)
             ]
 
         df["{}".format(pm.name)] = risks_for_current_pm

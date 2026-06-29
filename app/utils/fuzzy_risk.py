@@ -505,7 +505,10 @@ def _calculate_fuzzy_risk_agstack(
         score_frame, to_wdf = weather_df.copy(), daily_df_to_wdf
     score_frame["date"] = pd.to_datetime(score_frame["date"])
     score_frame["__season"] = score_frame["date"].dt.date.map(season_by_date)
-    score_frame = score_frame.sort_values("date")
+    # Defensive: a scoring-frame date absent from the daily reference maps to NaN.
+    # Drop it explicitly (groupby would silently exclude it anyway). In normal wiring
+    # the hourly/daily frames share a source so no row is dropped.
+    score_frame = score_frame.dropna(subset=["__season"]).sort_values("date")
 
     fuzzy = FuzzyMamdaniRisk()
     pheno = PhenologicalGating()
