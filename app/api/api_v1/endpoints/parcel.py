@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 import crud
 from api import deps
+from core import settings
 from schemas import Message, CreateParcel, ParcelWKT, Parcels
 
 from shapely import wkt, errors
@@ -34,7 +35,8 @@ def upload_parcel_lat_lon(
 
     parcel_db = crud.parcel.create(db=db, obj_in=parcel_information)
 
-    fetch_historical_data_for_parcel(db=db, parcel=parcel_db)
+    if not settings.DISABLE_WEATHER_ENRICHMENT_ON_PARCEL_CREATE:
+        fetch_historical_data_for_parcel(db=db, parcel=parcel_db)
 
     response_object = Message(
         message="Successfully uploaded parcel information!"
