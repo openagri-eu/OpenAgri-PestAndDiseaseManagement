@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     OFFLINE_DEPLOYMENT: bool = False
     DISABLE_AUTH: bool = False
     WEATHER_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
-    DISABLE_WEATHER_ENRICHMENT_ON_PARCEL_CREATE: bool = False
+    ENABLE_WEATHER_ENRICHMENT_ON_PARCEL_CREATE: bool = True
 
     OPEN_METEO_MAX_PAST_DAYS: int = 92
     OPEN_METEO_MIN_PAST_DAYS: int = 1
