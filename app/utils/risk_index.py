@@ -25,7 +25,18 @@ def calculate_risk_index_probability(db: Session, parcel: Parcel, pest_models: L
     data_db = crud.data.get_data_query_by_parcel_id_and_date_interval(db=db, parcel_id=parcel.id,
                                                                       date_from=from_date, date_to=to_date)
 
-    df = pd.read_sql(sql=data_db.statement, con=db.bind, parse_dates={"date": "%Y-%m-%d"})
+    df = pd.read_sql(sql=data_db.statement, con=db.connection(), parse_dates={"date": "%Y-%m-%d"})
+
+    # Release the DB connection now — everything below is pure pandas/Python
+    # work on already-fetched data plus already eager-loaded pest_model
+    # attributes (rules/conditions/unit/operator). Holding the connection
+    # through that work keeps it checked out from the pool for the entire
+    # GIL-bound computation below, which is what actually exhausts the pool
+    # under concurrent load (proven live: the pool fills almost instantly on
+    # the cheap query above, then stays pinned at max for tens of seconds
+    # while requests wait their GIL turn to run this computation — not
+    # because the query itself is slow).
+    db.close()
 
     # Calculate the risks associated with each pest_model
     for pm in pest_models:
