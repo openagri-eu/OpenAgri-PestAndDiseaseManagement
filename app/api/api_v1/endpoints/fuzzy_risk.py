@@ -48,10 +48,10 @@ def calculate_risk(
     if not parcel:
         raise HTTPException(status_code=404, detail="Parcel not found")
 
-    rows = crud.data.get_data_by_parcel_id_and_date_interval(
+    rows = crud.data.get_data_query_by_parcel_id_and_date_interval(
         db=db, parcel_id=req.parcel_id,
-        start=req.from_date, end=req.to_date,
-    )
+        date_from=req.from_date, date_to=req.to_date,
+    ).all()
     daily_df = _weather_rows_to_daily_df(rows)
     if daily_df.empty:
         raise HTTPException(status_code=404, detail="No weather data for this parcel and date range")
