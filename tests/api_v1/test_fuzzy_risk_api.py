@@ -118,7 +118,7 @@ def _patch_calculate_happy_path(mocker):
     """Patch all heavy deps for /calculate/ with a successful scenario."""
     mock_crud = mocker.patch(f"{ENDPOINT_MODULE}.crud")
     mock_crud.parcel.get.return_value = _make_parcel()
-    mock_crud.data.get_data_by_parcel_id_and_date_interval.return_value = [MagicMock()]
+    mock_crud.data.get_data_query_by_parcel_id_and_date_interval.return_value.all.return_value = [MagicMock()]
 
     mocker.patch(f"{ENDPOINT_MODULE}._weather_rows_to_daily_df", return_value=SAMPLE_DAILY_DF)
     mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models",    return_value=[MagicMock()])
@@ -194,7 +194,7 @@ class TestCalculateRisk:
     def test_no_weather_data(self, client, mocker):
         mock_crud = mocker.patch(f"{ENDPOINT_MODULE}.crud")
         mock_crud.parcel.get.return_value = _make_parcel()
-        mock_crud.data.get_data_by_parcel_id_and_date_interval.return_value = []
+        mock_crud.data.get_data_query_by_parcel_id_and_date_interval.return_value.all.return_value = []
         mocker.patch(f"{ENDPOINT_MODULE}._weather_rows_to_daily_df",
                      return_value=pd.DataFrame())
         mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models", return_value=[MagicMock()])
@@ -205,7 +205,7 @@ class TestCalculateRisk:
     def test_no_threat_models(self, client, mocker):
         mock_crud = mocker.patch(f"{ENDPOINT_MODULE}.crud")
         mock_crud.parcel.get.return_value = _make_parcel()
-        mock_crud.data.get_data_by_parcel_id_and_date_interval.return_value = [MagicMock()]
+        mock_crud.data.get_data_query_by_parcel_id_and_date_interval.return_value.all.return_value = [MagicMock()]
         mocker.patch(f"{ENDPOINT_MODULE}._weather_rows_to_daily_df", return_value=SAMPLE_DAILY_DF)
         mocker.patch(f"{ENDPOINT_MODULE}._resolve_threat_models",    return_value=[])
         r = client.post("/calculate/", json=CALCULATE_BODY)
