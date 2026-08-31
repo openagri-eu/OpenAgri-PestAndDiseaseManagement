@@ -1,37 +1,48 @@
 ARG SOURCE_REPO=https://github.com/openagri-eu/openagri-pestanddiseasemanagement
-FROM python:3.11
-LABEL org.opencontainers.image.source=${SOURCE_REPO}
 
+# ===========================================
+# Stage 1: Builder
+# ===========================================
+FROM python:3.11-slim AS builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-ENV PIP_VERSION_TO_INSTALL="24.0"
-
-# install essential OS libs
-RUN apt-get update && \
-    apt-get install -y \
-    wget \
-    unzip \
-    git \
-    cmake \
-    pkg-config \
-    build-essential \
-    libpq-dev \
-    && apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip install -U pip==${PIP_VERSION_TO_INSTALL} && \
-    rm -rf /tmp/pip* /root/.cache
-
-# set working directory to /code
 WORKDIR /code
 
-COPY requirements.txt /code/
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY . /code
+COPY requirements.txt .
 
-COPY entrypoint.sh /usr/local/bin/
+RUN python -m venv /venv && \
+    /venv/bin/pip install -U pip==24.0 && \
+    /venv/bin/pip install --no-cache-dir -r requirements.txt
 
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# ===========================================
+# Stage 2: Final Production Image
+# ===========================================
+FROM python:3.11-slim
+
+ARG SOURCE_REPO
+LABEL org.opencontainers.image.source=${SOURCE_REPO}
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /code
+
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /venv /venv
+
+COPY app/ app/
+COPY alembic/ alembic/
+COPY alembic.ini .
+COPY data/ data/
+COPY entrypoint.sh .
+
+RUN chmod +x entrypoint.sh
+
+ENV PATH="/venv/bin:$PATH"
