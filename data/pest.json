@@ -1127,5 +1127,91 @@
       "pheno_bbch_end": "BBCH 87",
       "source": "Evenden et al. (2007) Environ. Entomol. 36:706-716"
     }
+  },
+  "Potato": {
+    "Phytophthora infestans": {
+      "label": "Potato late blight",
+      "t_base": 7.0,
+      "t_optimal_min": 15.0,
+      "t_optimal_max": 23.0,
+      "t_lethal_max": 30.0,
+      "min_streak": 2,
+      "min_wetness_hours_critical": 10,
+      "phenology_window_gdd": [
+        150,
+        1500
+      ],
+      "pheno_fraction": [
+        0.068,
+        0.682
+      ],
+      "pheno_fraction_ref_gdd5": 2200,
+      "pheno_bbch_start": "BBCH 09 (Emergence)",
+      "pheno_bbch_end": "BBCH 89 (Senescence / Harvest)",
+      "source": "Fry et al. (1983) Phytopathology 73:1109-1114; EPPO Datasheet PHYTIN"
+    },
+    "Leptinotarsa decemlineata": {
+      "label": "Colorado potato beetle",
+      "t_base": 10.0,
+      "t_optimal_min": 25.0,
+      "t_optimal_max": 30.0,
+      "t_lethal_max": 38.0,
+      "min_streak": 1,
+      "phenology_window_gdd": [
+        150,
+        1200
+      ],
+      "pheno_fraction": [
+        0.068,
+        0.545
+      ],
+      "pheno_fraction_ref_gdd5": 2200,
+      "pheno_bbch_start": "BBCH 09 (Emergence)",
+      "pheno_bbch_end": "BBCH 85 (Ripening of fruit/seed)",
+      "source": "Logan et al. (1985) Environ. Entomol. 14:255-260; EPPO Datasheet LPTNDE"
+    }
+  },
+  "Sugar Beets": {
+    "Cercospora beticola": {
+      "label": "Cercospora leaf spot",
+      "t_base": 10.0,
+      "t_optimal_min": 25.0,
+      "t_optimal_max": 30.0,
+      "t_lethal_max": 38.0,
+      "min_streak": 2,
+      "min_wetness_hours_critical": 12,
+      "phenology_window_gdd": [
+        300,
+        1800
+      ],
+      "pheno_fraction": [
+        0.136,
+        0.818
+      ],
+      "pheno_fraction_ref_gdd5": 2200,
+      "pheno_bbch_start": "BBCH 31 (Crop cover 10%)",
+      "pheno_bbch_end": "BBCH 49 (Harvestable beet stage)",
+      "source": "Shane & Teng (1984) Phytopathology 74:1150-1155; Windels et al. (1998) Plant Dis. 82:716-726"
+    },
+    "Erysiphe betae": {
+      "label": "Sugar beet powdery mildew",
+      "t_base": 10.0,
+      "t_optimal_min": 20.0,
+      "t_optimal_max": 26.0,
+      "t_lethal_max": 35.0,
+      "min_streak": 2,
+      "phenology_window_gdd": [
+        400,
+        1800
+      ],
+      "pheno_fraction": [
+        0.182,
+        0.818
+      ],
+      "pheno_fraction_ref_gdd5": 2200,
+      "pheno_bbch_start": "BBCH 35 (Crop cover 50%)",
+      "pheno_bbch_end": "BBCH 49 (Harvestable beet stage)",
+      "source": "Asher & Williams (1991) Plant Pathology 40:408-416"
+    }
   }
 }
